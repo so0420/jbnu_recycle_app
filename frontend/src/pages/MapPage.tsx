@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { PageHead } from '../components/common';
 import { get } from '../lib/api';
 import { getPosition } from '../lib/device';
-import { useStore } from '../lib/store';
+import { errMsg, useStore } from '../lib/store';
 import type { Place } from '../lib/types';
 
 const JEONJU: [number, number] = [35.8242, 127.148];
@@ -16,19 +16,65 @@ const KINDS: { key: string; name: string; color: string }[] = [
   { key: 'bag_shop', name: '종량제봉투 판매소', color: '#7B8391' },
 ];
 
+// 확대 단계별 표시: 14 이상 개별 수거장, 13 행정동, 11~12 시·군·구, 10 이하 시·도 묶음
+const DETAIL_ZOOM = 14;
+function levelOf(z: number): 'sido' | 'sigungu' | 'dong' | null {
+  if (z >= DETAIL_ZOOM) return null;
+  if (z >= 13) return 'dong';
+  if (z >= 11) return 'sigungu';
+  return 'sido';
+}
+const NEXT_ZOOM = { sido: 11, sigungu: 13, dong: DETAIL_ZOOM } as const;
+
+interface Cluster { key: string; name: string; n: number; lat: number; lng: number }
+type MapRow = [number, string, number, number, number];
+
 export default function MapPage() {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
+  const canvas = useRef<L.Canvas | null>(null);
+  const meDot = useRef<L.CircleMarker | null>(null);
+  const [locating, setLocating] = useState(false);
   const [kinds, setKinds] = useState<string[]>(['recycle_point', 'clothes_bin', 'battery_bin', 'reverse_vending']);
   const [sel, setSel] = useState<Place | null>(null);
   const [count, setCount] = useState(0);
-  const [loadErr, setLoadErr] = useState(false);
+  const [loadErr, setLoadErr] = useState('');
   const { me } = useStore();
   const home = me?.region?.center;
   const kindsRef = useRef(kinds);
   kindsRef.current = kinds;
   const seq = useRef(0);
+
+  function showMe(lat: number, lng: number) {
+    const m = map.current;
+    if (!m) return;
+    if (meDot.current) meDot.current.setLatLng([lat, lng]);
+    else meDot.current = L.circleMarker([lat, lng], { radius: 7, color: '#fff', weight: 3, fillColor: '#2C6BCB', fillOpacity: 1 }).addTo(m);
+  }
+
+  async function goToMe() {
+    if (locating) return;
+    setLocating(true);
+    try {
+      const f = await getPosition(10000);
+      showMe(f.lat, f.lng);
+      map.current?.setView([f.lat, f.lng], Math.max(16, map.current.getZoom()));
+      setLoadErr('');
+    } catch (e) {
+      setLoadErr(errMsg(e));
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  async function pick(id: number) {
+    try {
+      setSel(await get<Place>(`/places/${id}`));
+    } catch {
+      setLoadErr('수거장 정보를 불러오지 못했어요');
+    }
+  }
 
   async function load() {
     const m = map.current;
@@ -39,27 +85,63 @@ export default function MapPage() {
       setCount(0);
       return;
     }
-    const c = m.getCenter();
-    const radius = Math.min(3000, Math.max(300, m.distance(c, m.getBounds().getNorthEast())));
+    const b = m.getBounds();
+    const box4 = `south=${b.getSouth()}&west=${b.getWest()}&north=${b.getNorth()}&east=${b.getEast()}`;
     const asked = kindsRef.current.join(',');
-    let rows: Place[];
+    const level = levelOf(m.getZoom());
     try {
-      rows = await get<Place[]>(`/places?lat=${c.lat}&lng=${c.lng}&radius=${Math.round(radius)}&kind=${asked}`);
-      setLoadErr(false);
+      if (level) {
+        const rows = await get<Cluster[]>(`/places/clusters?level=${level}&${box4}&kind=${asked}`);
+        if (my !== seq.current || asked !== kindsRef.current.join(',') || !layer.current) return;
+        drawClusters(m, rows, level);
+      } else {
+        const r = await get<{ truncated: boolean; rows: MapRow[] }>(`/places/map?${box4}&kind=${asked}`);
+        if (my !== seq.current || asked !== kindsRef.current.join(',') || !layer.current) return;
+        drawPlaces(m, r.rows);
+      }
+      setLoadErr('');
     } catch {
-      if (my === seq.current) setLoadErr(true);
-      return;
+      if (my === seq.current) setLoadErr('수거장 정보를 불러오지 못했어요. 지도를 조금 움직이면 다시 시도해요.');
     }
-    if (my !== seq.current || asked !== kindsRef.current.join(',') || !layer.current) return;
-    layer.current.clearLayers();
-    for (const p of rows) {
-      const k = KINDS.find((x) => x.key === p.kind);
-      L.circleMarker([p.lat, p.lng], {
-        radius: p.kind === 'bag_shop' ? 5 : 8, color: '#2A2622', weight: 2,
-        fillColor: p.is_active ? (k?.color ?? '#999') : '#bbb', fillOpacity: 0.95,
-      }).on('click', () => setSel(p)).addTo(layer.current);
+  }
+
+  function drawPlaces(m: L.Map, rows: MapRow[]) {
+    const lg = layer.current!;
+    lg.clearLayers();
+    const z = m.getZoom();
+    const r = z >= 16 ? 8 : z >= 15 ? 7 : 5;
+    for (const [id, kind, lat, lng, active] of rows) {
+      const k = KINDS.find((x) => x.key === kind);
+      L.circleMarker([lat, lng], {
+        renderer: canvas.current ?? undefined,          // 수천 곳도 빠르게 그리도록 캔버스 사용
+        radius: kind === 'bag_shop' ? Math.max(4, r - 3) : r, color: '#2A2622', weight: z >= 15 ? 2 : 1.5,
+        fillColor: active ? (k?.color ?? '#999') : '#bbb', fillOpacity: 0.95,
+      }).on('click', () => void pick(id)).addTo(lg);
     }
     setCount(rows.length);
+  }
+
+  function drawClusters(m: L.Map, rows: Cluster[], level: 'sido' | 'sigungu' | 'dong') {
+    const lg = layer.current!;
+    lg.clearLayers();
+    const b = m.getBounds();
+    // 화면 안의 수는 모두 더하고, 말풍선은 겹치지 않게 큰 곳부터 놓는다
+    setCount(rows.filter((c) => b.contains([c.lat, c.lng])).reduce((a, c) => a + c.n, 0));
+    const placed: { x: number; y: number; w: number }[] = [];
+    for (const c of [...rows].sort((a, b2) => b2.n - a.n)) {
+      const pt = m.latLngToContainerPoint([c.lat, c.lng]);
+      const label = `${c.name} ${c.n.toLocaleString('ko-KR')}곳`;
+      const w = label.length * 9 + 22;
+      if (placed.some((p) => Math.abs(p.x - pt.x) < (p.w + w) / 2 && Math.abs(p.y - pt.y) < 30)) continue;
+      placed.push({ x: pt.x, y: pt.y, w });
+      const icon = L.divIcon({
+        className: 'cl-icon', iconSize: undefined,
+        html: `<div class="cl-bubble"><b>${c.name}</b> ${c.n.toLocaleString('ko-KR')}곳</div>`,
+      });
+      L.marker([c.lat, c.lng], { icon, keyboard: false, title: label })
+        .on('click', () => m.setView([c.lat, c.lng], Math.max(m.getZoom() + 1, NEXT_ZOOM[level])))
+        .addTo(lg);
+    }
   }
 
   useEffect(() => {
@@ -72,16 +154,17 @@ export default function MapPage() {
     }).addTo(m);
     L.control.zoom({ position: 'bottomright' }).addTo(m);
     layer.current = L.layerGroup().addTo(m);
+    canvas.current = L.canvas({ padding: 0.3 });
     map.current = m;
     let t: ReturnType<typeof setTimeout>;
     m.on('moveend', () => { clearTimeout(t); t = setTimeout(load, 250); });
     getPosition(8000)
       .then((f) => {
         m.setView([f.lat, f.lng], 16);
-        L.circleMarker([f.lat, f.lng], { radius: 7, color: '#fff', weight: 3, fillColor: '#2C6BCB', fillOpacity: 1 }).addTo(m);
+        showMe(f.lat, f.lng);
       })
       .catch(() => void load());
-    return () => { m.remove(); map.current = null; };
+    return () => { m.remove(); map.current = null; meDot.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -102,8 +185,20 @@ export default function MapPage() {
           </button>
         ))}
       </div>
-      <div className="map-wrap" ref={box} />
-      {loadErr && <p className="err small">수거장 정보를 불러오지 못했어요. 지도를 조금 움직이면 다시 시도해요.</p>}
+      <div className="map-box">
+        <div className="map-wrap" ref={box} />
+        <button className="map-locate" onClick={() => void goToMe()} disabled={locating} aria-label="현재 위치로 이동" title="현재 위치로 이동">
+          {locating ? <span className="spinner sm" /> : (
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" fill="#2C6BCB" />
+              <circle cx="12" cy="12" r="7.5" fill="none" stroke="#2A2622" strokeWidth="2" />
+              <path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" stroke="#2A2622" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
+      </div>
+      {loadErr && <p className="err small">{loadErr}</p>}
+      <p className="tiny muted">축소하면 지역별로 묶어서 보여요. 묶음을 누르면 그 지역으로 확대돼요.</p>
       {sel && (
         <div className="card pop" id="place-card">
           <div className="row between">
