@@ -3,29 +3,25 @@
 #   cd ~/projects/recycle && git pull && sudo bash deploy/nginx/install.sh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
+SITE=/etc/nginx/sites-available/recycle.so4.kr
 [ "$(id -u)" -eq 0 ] || { echo "sudo 로 실행해 주세요: sudo bash $0" >&2; exit 1; }
 [ -f /etc/nginx/snippets/cloudflare-allow.conf ] || { echo "/etc/nginx/snippets/cloudflare-allow.conf 가 없습니다" >&2; exit 1; }
 
-# 되돌릴 수 있게 기존 파일을 보관
 STAMP=$(date +%Y%m%d%H%M%S)
-for f in /etc/nginx/conf.d/recycle.conf /etc/nginx/sites-available/recycle.so4.kr; do
-    [ -f "$f" ] && cp "$f" "/tmp/$(basename "$f").bak.$STAMP"
-done
+[ -f "$SITE" ] && cp "$SITE" "/tmp/recycle.so4.kr.bak.$STAMP"
+OLD_CONFD=""
+if [ -f /etc/nginx/conf.d/recycle.conf ]; then          # 이전 방식(conf.d 분리) 정리
+    OLD_CONFD="/tmp/recycle.conf.bak.$STAMP"
+    mv /etc/nginx/conf.d/recycle.conf "$OLD_CONFD"
+fi
 
-cp "$DIR/recycle.conf"   /etc/nginx/conf.d/recycle.conf
-cp "$DIR/recycle.so4.kr" /etc/nginx/sites-available/recycle.so4.kr
-ln -sf /etc/nginx/sites-available/recycle.so4.kr /etc/nginx/sites-enabled/recycle.so4.kr
+cp "$DIR/recycle.so4.kr" "$SITE"
+ln -sf "$SITE" /etc/nginx/sites-enabled/recycle.so4.kr
 
 if ! nginx -t; then
-    echo "설정 오류: 이전 파일로 되돌립니다" >&2
-    for f in recycle.conf recycle.so4.kr; do
-        b="/tmp/$f.bak.$STAMP"
-        if [ -f "$b" ]; then
-            case $f in recycle.conf) cp "$b" /etc/nginx/conf.d/recycle.conf ;; *) cp "$b" /etc/nginx/sites-available/recycle.so4.kr ;; esac
-        elif [ "$f" = recycle.conf ]; then
-            rm -f /etc/nginx/conf.d/recycle.conf
-        fi
-    done
+    echo "설정 오류: 이전 상태로 되돌립니다" >&2
+    [ -f "/tmp/recycle.so4.kr.bak.$STAMP" ] && cp "/tmp/recycle.so4.kr.bak.$STAMP" "$SITE"
+    [ -n "$OLD_CONFD" ] && mv "$OLD_CONFD" /etc/nginx/conf.d/recycle.conf
     nginx -t && systemctl reload nginx
     exit 1
 fi

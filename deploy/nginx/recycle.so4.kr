@@ -1,6 +1,18 @@
 # recycle.so4.kr -> 127.0.0.1:11010
 # Cloudflare 프록시 뒤에서 동작. 인증서는 Cloudflare Origin 인증서 (so4.kr + *.so4.kr)
-# map($recycle_client_ip)·log_format(recycle_private) 은 /etc/nginx/conf.d/recycle.conf 에 있다.
+
+# Cloudflare 가 넘겨준 실제 방문자 IP (없으면 연결 IP).
+# cloudflare-allow 로 Cloudflare 대역만 들어오므로 이 헤더를 믿어도 된다.
+# 앱(uvicorn)은 127.0.0.1 만 신뢰하므로 이 값이 request.client.host → rate limit 키가 된다.
+map $http_cf_connecting_ip $recycle_client_ip {
+    ""      $remote_addr;
+    default $http_cf_connecting_ip;
+}
+
+# 접속 로그: 쿼리스트링 없이 경로($uri)만 남긴다.
+# 지도·인증 요청 주소에 위치 좌표(lat, lng)가 들어가므로 $request 를 쓰는 기본 형식(combined_host)을 쓰지 않는다.
+log_format recycle_private '$recycle_client_ip [$time_local] "$request_method $uri $server_protocol" '
+                           '$status $body_bytes_sent $request_time';
 
 server {
     listen 80;
@@ -9,7 +21,6 @@ server {
 
     # Cloudflare 대역만 허용 (직접 IP 접근 차단)
     include snippets/cloudflare-allow.conf;
-
     access_log /var/log/nginx/recycle_access.log recycle_private;
 
     return 301 https://$host$request_uri;
@@ -22,25 +33,23 @@ server {
 
     # Cloudflare 대역만 허용 (직접 IP 접근 차단)
     include snippets/cloudflare-allow.conf;
+    access_log /var/log/nginx/recycle_access.log recycle_private;
 
     ssl_certificate     /etc/ssl/certs/so4.kr.pem;
     ssl_certificate_key /etc/ssl/private/so4.kr.key;
 
-    # 전용 로그, 쿼리(위치 좌표) 없이 기록. /var/log/nginx/*.log 로테이션(14일)을 따른다
-    access_log /var/log/nginx/recycle_access.log recycle_private;
-
     client_max_body_size 12m;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
 
     location / {
         proxy_pass http://127.0.0.1:11010;
-
-        # 앱(uvicorn)은 127.0.0.1 만 신뢰하므로 이 값이 request.client.host → rate limit 키가 된다
+        proxy_http_version 1.1;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $recycle_client_ip;
         proxy_set_header X-Forwarded-For   $recycle_client_ip;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        proxy_http_version 1.1;
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;
     }
