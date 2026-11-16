@@ -44,6 +44,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response: Response = await call_next(request)
 
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        # API 응답은 캐시하지 않는다 (WebView 가 이전 응답을 재사용하는 문제 방지)
+        if request.url.path.startswith("/api/"):
+            response.headers.setdefault("Cache-Control", "no-store")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault(

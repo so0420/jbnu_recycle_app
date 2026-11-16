@@ -33,9 +33,18 @@ def verify_password(pw: str, stored: str) -> bool:
         return False
 
 
-def issue(response: Response, user_id: int) -> None:
+PASSWORD_RULE = "비밀번호는 영문과 숫자를 섞어 8자 이상으로 만들어 주세요"
+
+
+def password_ok(pw: str) -> bool:
+    import re
+    return 8 <= len(pw) <= 72 and bool(re.search(r"[A-Za-z]", pw)) and bool(re.search(r"\d", pw))
+
+
+def issue(response: Response, user: User) -> None:
     exp = datetime.now(timezone.utc) + timedelta(days=settings.JWT_EXPIRE_DAYS)
-    token = jwt.encode({"sub": str(user_id), "exp": exp}, settings.JWT_SECRET, algorithm="HS256")
+    token = jwt.encode({"sub": str(user.id), "v": user.token_version or 0, "exp": exp}, settings.JWT_SECRET,
+                       algorithm="HS256")
     response.set_cookie(COOKIE, token, max_age=settings.JWT_EXPIRE_DAYS * 86400, httponly=True,
                         secure=settings.COOKIE_SECURE, samesite="lax", path="/")
 
@@ -51,10 +60,11 @@ async def current_user(request: Request, db: AsyncSession = Depends(get_db)) -> 
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
         uid = int(payload["sub"])
+        ver = int(payload.get("v", 0))
     except (jwt.PyJWTError, KeyError, ValueError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "다시 로그인해 주세요")
     user = await db.get(User, uid)
-    if user is None or user.deleted_at is not None:
+    if user is None or user.deleted_at is not None or (user.token_version or 0) != ver:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "다시 로그인해 주세요")
     return user
 

@@ -15,4 +15,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 COPY data/ /app/data/
 COPY --from=web /web/dist /app/frontend/dist
-CMD ["sh", "-c", "alembic upgrade head && python -m scripts.import_data --data /app/data && exec uvicorn main:app --host 127.0.0.1 --port 11010 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header"]
+# 마이그레이션 → 데이터 적재(실패해도 앱은 뜬다) → 서버.  접속 로그는 끈다 (주소에 위치 좌표가 들어가므로)
+CMD ["sh", "-c", "alembic upgrade head && (python -m scripts.import_data --data /app/data || echo 'data import failed') && exec uvicorn main:app --host 127.0.0.1 --port 11010 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header --no-access-log"]

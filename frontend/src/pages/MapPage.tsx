@@ -28,6 +28,11 @@ export default function MapPage() {
   async function load() {
     const m = map.current;
     if (!m || !layer.current) return;
+    if (kindsRef.current.length === 0) {
+      layer.current.clearLayers();
+      setCount(0);
+      return;
+    }
     const c = m.getCenter();
     const radius = Math.min(3000, Math.max(300, m.distance(c, m.getBounds().getNorthEast())));
     const rows = await get<Place[]>(`/places?lat=${c.lat}&lng=${c.lng}&radius=${Math.round(radius)}&kind=${kindsRef.current.join(',')}`).catch(() => []);
@@ -64,6 +69,9 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => { void load(); }, [kinds]);
+  useEffect(() => {
+    if (sel) document.getElementById('place-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [sel]);
 
   const toggle = (k: string) => setKinds((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
 
@@ -79,7 +87,7 @@ export default function MapPage() {
       </div>
       <div className="map-wrap" ref={box} />
       {sel && (
-        <div className="card pop">
+        <div className="card pop" id="place-card">
           <div className="row between">
             <b>{sel.name || sel.kind_name}</b>
             <button className="back" onClick={() => setSel(null)} aria-label="닫기">✕</button>
@@ -93,7 +101,7 @@ export default function MapPage() {
           {!sel.is_active && <p className="caution">현재 사용하지 않는 곳으로 표시돼 있어요</p>}
           <div className="row" style={{ gap: 8 }}>
             <a className="btn ghost grow sm" href={`https://map.kakao.com/link/to/${encodeURIComponent(sel.name || '수거장')},${sel.lat},${sel.lng}`} target="_blank" rel="noreferrer">길찾기</a>
-            {sel.can_verify && <Link className="btn grow sm" to="/verify">여기서 인증</Link>}
+            {sel.can_verify && <Link className="btn grow sm" to="/verify">도착하면 인증하기</Link>}
           </div>
         </div>
       )}

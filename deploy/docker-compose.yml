@@ -20,6 +20,9 @@ services:
     depends_on:
       - ollama
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
   ollama:
     image: ollama/ollama:latest
@@ -43,3 +46,6 @@ services:
       - "127.0.0.1:11001:11434"
     mem_limit: 14g
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}

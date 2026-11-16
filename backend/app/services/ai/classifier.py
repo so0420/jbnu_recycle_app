@@ -147,6 +147,7 @@ class VerifyJudge:
     score: float | None
     judged_by: str
     uncertain: bool
+    unavailable: bool = False      # 두 AI 모두 판단하지 못함 → 다시 시도하게 한다
 
 
 async def judge_disposal(db: AsyncSession, image_b64: str) -> VerifyJudge:
@@ -166,9 +167,11 @@ async def judge_disposal(db: AsyncSession, image_b64: str) -> VerifyJudge:
     schema = {"type": "object", "additionalProperties": False, "required": ["is_disposal_photo", "confidence"],
               "properties": {"is_disposal_photo": {"type": "boolean"}, "confidence": {"type": "number"}}}
     try:
-        s2 = await openai_fallback.ask_json(db, q + " Answer for a photo taken in Korea.", image_b64, schema,
-                                            "disposal_check")
-        return VerifyJudge(bool(s2["is_disposal_photo"]), score, "openai", False)
+        s2 = await openai_fallback.ask_json(db, q + " Answer for a photo taken in Korea. confidence is 0..1.",
+                                            image_b64, schema, "disposal_check")
+        conf = float(s2.get("confidence", 0))
+        passed = bool(s2["is_disposal_photo"]) and conf >= 0.6
+        # 1차가 애매했고 2차로 통과한 것은 관리자 검토 대상으로 표시
+        return VerifyJudge(passed, score, "openai", passed and (score is not None or conf < 0.8))
     except openai_fallback.OpenAIUnavailable:
-        # 판단 불가: 통과시키되 관리자 검토 대상으로 표시
-        return VerifyJudge(True, score, "none", True)
+        return VerifyJudge(False, score, "none", False, unavailable=True)

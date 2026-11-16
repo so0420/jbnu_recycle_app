@@ -28,7 +28,12 @@ async def status(db: AsyncSession, user: User) -> dict:
     wprog = {"verify3": w.verify_count, "types3": len(w.types or []), "habit5": w.habit_count}
     weekly = [{**m, "progress": min(m["goal"], wprog[m["id"]]), "claimed": m["id"] in (w.claimed or [])}
               for m in data.economy()["missions"]["weekly"]]
-    return {"daily": daily, "weekly": weekly, "unlocked": economy.unlocked(user, "missions")}
+    claimed_w = w.claimed or []
+    return {"daily": daily, "weekly": weekly, "unlocked": economy.unlocked(user, "missions"),
+            "types3_material_pending": "types3" in claimed_w and "types3_mat" not in claimed_w,
+            "reward_preview": {"daily_coins": economy.mult(data.economy()["missions"]["daily_reward"]["coins"]),
+                               "daily_xp": economy.mult(data.economy()["missions"]["daily_reward"]["xp"]),
+                               "weekly_materials": economy.mult(data.economy()["missions"]["weekly_materials"])}}
 
 
 async def claim(db: AsyncSession, user: User, mission_id: str) -> dict:
@@ -44,7 +49,9 @@ async def claim(db: AsyncSession, user: User, mission_id: str) -> dict:
             out = {"coins": await economy.add_resource(db, user, "coins", cfg["daily_reward"]["coins"], "mission",
                                                        mission_id),
                    "xp": (await economy.add_xp(db, user, cfg["daily_reward"]["xp"], "mission", mission_id))["xp"]}
-            if all(x["claimed"] or x["id"] == mission_id for x in st["daily"]):
+            if all(x["claimed"] or x["id"] == mission_id for x in st["daily"]) \
+                    and "all_bonus" not in (d.missions_claimed or []):
+                d.missions_claimed = [*(d.missions_claimed or []), "all_bonus"]
                 out["tickets"] = await economy.add_resource(db, user, "tickets", cfg["daily_all_bonus_tickets"],
                                                             "mission_all")
             return out
@@ -55,10 +62,10 @@ async def claim(db: AsyncSession, user: User, mission_id: str) -> dict:
             w = await economy.weekly(db, user)
             w.claimed = [*(w.claimed or []), mission_id]
             if m["reward"] == "capsule":
-                cap = await monsters.grant_capsule(db, user, "plastic" if not w.types else w.types[-1]
-                                                   if w.types[-1] in data.BASE_TYPES else "plastic", "weekly")
+                last = (w.types or [None])[-1]
+                cap = await monsters.grant_capsule(db, user, last if last in data.BASE_TYPES else "plastic", "weekly")
                 return {"capsule": {"id": cap.id, "type": cap.type}}
-            return {"materials_choice": cfg["weekly_materials"]}
+            return {"materials_choice": economy.mult(cfg["weekly_materials"])}
     raise HTTPException(404, "미션을 찾을 수 없어요")
 
 

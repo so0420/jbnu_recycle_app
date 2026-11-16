@@ -2,22 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Garden } from '../components/Art';
 import { Modal, PageHead } from '../components/common';
-import { get, send } from '../lib/api';
+import { send } from '../lib/api';
+import RegionPicker from '../components/RegionPicker';
 import { dumpDaysText } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
-
-interface RegionRow { code: string; name: string; gu: string }
 
 export default function MePage() {
   const { me, refresh, toast } = useStore();
   const nav = useNavigate();
-  const [regions, setRegions] = useState<RegionRow[]>([]);
   const [region, setRegion] = useState('');
   const [pw, setPw] = useState({ current: '', new: '' });
   const [del, setDel] = useState(false);
   const [delPw, setDelPw] = useState('');
 
-  useEffect(() => { get<RegionRow[]>('/regions/list').then(setRegions); }, []);
   useEffect(() => { setRegion(me?.region?.code ?? ''); }, [me]);
   if (!me) return null;
 
@@ -56,11 +53,8 @@ export default function MePage() {
         <h3>내 동네</h3>
         {me.region && <p className="small muted">{me.region.gu} {me.region.name} · {dumpDaysText(me.region.dump_weekdays)} · {me.region.confirmed ? '확정됨' : '첫 인증 때 확정'}</p>}
         <div className="field">
-          <label htmlFor="me-region">동네 바꾸기 (확정 뒤에는 30일에 한 번, 남은 도전권은 사라져요)</label>
-          <select id="me-region" value={region} onChange={(e) => setRegion(e.target.value)}>
-            <option value="">선택</option>
-            {regions.map((r) => <option key={r.code} value={r.code}>{r.gu} {r.name}</option>)}
-          </select>
+          <label htmlFor="me-sido">동네 바꾸기 (확정 뒤에는 30일에 한 번, 남은 도전권은 사라져요)</label>
+          <RegionPicker idPrefix="me" value={region} onChange={setRegion} />
         </div>
         <button className="btn ghost" disabled={!region || region === me.region?.code} onClick={() => run(() => send('/me/region', 'PATCH', { region_code: region }), '동네를 바꿨어요')}>저장</button>
       </div>
@@ -88,7 +82,7 @@ export default function MePage() {
           <button className="btn ghost" onClick={async () => { await send('/auth/logout', 'POST'); await refresh(); nav('/login'); }}>로그아웃</button>
           <button className="btn danger" onClick={() => setDel(true)}>회원 탈퇴</button>
         </div>
-        <p className="tiny muted center"><Link to="/terms">이용약관</Link> · <Link to="/privacy">개인정보 처리방침</Link></p>
+        <p className="tiny muted center"><Link to="/terms">이용약관</Link> · <Link to="/privacy">개인정보 처리방침</Link> · <Link to="/location-terms">위치기반서비스 이용약관</Link></p>
       </div>
 
       {del && (

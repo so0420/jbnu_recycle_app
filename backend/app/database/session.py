@@ -16,6 +16,9 @@ engine = create_async_engine(
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_recycle=settings.DB_POOL_RECYCLE,
+    # 같은 사용자의 요청은 users 행 잠금으로 줄 세운다. 잠금을 기다린 뒤에는 최신 값을 읽어야 하므로 READ COMMITTED
+    isolation_level="READ COMMITTED",
+    connect_args={"init_command": "SET time_zone='+09:00'"},
 )
 
 AsyncSessionLocal = async_sessionmaker(

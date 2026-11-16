@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Asia/Seoul"
 
     # ---- Auth ----
-    JWT_SECRET: str = "change-me"
+    JWT_SECRET: str = "change-me"   # local 이 아니면 validator 가 거절
     JWT_EXPIRE_DAYS: int = 30
     COOKIE_SECURE: bool = True
     ADMIN_LOGIN_IDS: list[str] = Field(default_factory=list)
@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     OPENAI_TIMEOUT: float = 40.0
 
     # ---- Game ----
-    REGION_MODE: Literal["dong", "zone"] = "zone"
+    REGION_MODE: Literal["dong", "zone", "sigungu"] = "sigungu"
     ECONOMY_MULTIPLIER: float = 1.0
     VERIFY_RADIUS_M: float = 50.0
     VERIFY_MAX_ACCURACY_M: float = 100.0
@@ -137,6 +137,14 @@ class Settings(BaseSettings):
     @classmethod
     def _normalize_list(cls, v):
         return _parse_csv_or_json_list(v)
+
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def _strong_secret(cls, v: str, info):
+        env = (info.data or {}).get("ENVIRONMENT", "production")
+        if env != "local" and (len(v) < 32 or v == "change-me"):
+            raise ValueError("JWT_SECRET 은 32자 이상의 무작위 값이어야 합니다 (local 제외)")
+        return v
 
     @computed_field  # type: ignore[misc]
     @property

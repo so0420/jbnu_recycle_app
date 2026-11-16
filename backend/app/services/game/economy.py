@@ -1,12 +1,19 @@
 """자원·경험치·레벨·도감·일일/주간 기록. 모든 변경은 economy_events 에 남긴다."""
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import DexEntry, EconomyEvent, HabitProgress, User, UserDaily, UserMaterial, UserWeekly
 from app.services.clock import today, week_start
 from app.services.game import data
+
+
+async def ensure_row(db: AsyncSession, model, pk: tuple, **values):
+    """동시 요청에도 안전한 get-or-create: INSERT IGNORE 후 최신 값으로 다시 읽는다."""
+    await db.execute(mysql_insert(model).values(**values).prefix_with("IGNORE"))
+    return await db.get(model, pk, populate_existing=True)
 
 
 def eco() -> dict:
@@ -96,10 +103,7 @@ async def add_resource(db: AsyncSession, user: User, resource: str, delta: int, 
         user.crystals += delta
     elif resource.startswith("mat:"):
         mat = resource[4:]
-        row = await db.get(UserMaterial, (user.id, mat))
-        if row is None:
-            row = UserMaterial(user_id=user.id, material=mat, amount=0)
-            db.add(row)
+        row = await ensure_row(db, UserMaterial, (user.id, mat), user_id=user.id, material=mat, amount=0)
         if row.amount + delta < 0:
             raise HTTPException(400, f"{material_name(mat)} 재료가 부족합니다")
         row.amount += delta
@@ -129,11 +133,10 @@ def material_name(mat: str) -> str:
 async def daily(db: AsyncSession, user: User) -> UserDaily:
     row = await db.get(UserDaily, (user.id, today()))
     if row is None:
-        row = UserDaily(user_id=user.id, day=today(), verify_count=0, guide_xp_count=0, ai_calls=0,
-                        free_raid_used=False, dumpday_ticket=False, raid_count=0, levelup_count=0,
-                        expedition_sent=0, scan_count=0, missions_claimed=[])
-        db.add(row)
-        await db.flush()
+        row = await ensure_row(db, UserDaily, (user.id, today()), user_id=user.id, day=today(), verify_count=0,
+                               guide_xp_count=0, ai_calls=0, free_raid_used=False, dumpday_ticket=False,
+                               raid_count=0, levelup_count=0, expedition_sent=0, scan_count=0,
+                               missions_claimed=[])
     return row
 
 
@@ -141,17 +144,13 @@ async def weekly(db: AsyncSession, user: User) -> UserWeekly:
     ws = week_start()
     row = await db.get(UserWeekly, (user.id, ws))
     if row is None:
-        row = UserWeekly(user_id=user.id, week_start=ws, verify_count=0, types=[], habit_count=0, claimed=[])
-        db.add(row)
-        await db.flush()
+        row = await ensure_row(db, UserWeekly, (user.id, ws), user_id=user.id, week_start=ws, verify_count=0,
+                               types=[], habit_count=0, claimed=[])
     return row
 
 
 async def add_habit(db: AsyncSession, user: User, type_: str) -> int:
-    row = await db.get(HabitProgress, (user.id, type_))
-    if row is None:
-        row = HabitProgress(user_id=user.id, type=type_, count=0)
-        db.add(row)
+    row = await ensure_row(db, HabitProgress, (user.id, type_), user_id=user.id, type=type_, count=0)
     row.count += 1
     w = await weekly(db, user)
     w.habit_count += 1
@@ -165,15 +164,45 @@ async def habits(db: AsyncSession, user: User) -> dict[str, int]:
 
 # ───────── 도감 ─────────
 async def add_dex(db: AsyncSession, user: User, kind: str, ref: str, shiny: bool = False) -> bool:
-    """새로 채웠으면 True"""
-    row = await db.get(DexEntry, (user.id, kind, ref))
-    if row is None:
-        db.add(DexEntry(user_id=user.id, kind=kind, ref=ref, is_shiny=shiny))
-        await db.flush()
-        return True
-    if shiny and not row.is_shiny:
-        row.is_shiny = True
-    return False
+    """새로 채웠으면 True. 새로 채우면 도감 완성 보상도 확인한다."""
+    res = await db.execute(mysql_insert(DexEntry).values(user_id=user.id, kind=kind, ref=ref, is_shiny=shiny)
+                           .prefix_with("IGNORE"))
+    new = res.rowcount == 1
+    if not new:
+        if shiny:
+            row = await db.get(DexEntry, (user.id, kind, ref), populate_existing=True)
+            if row and not row.is_shiny:
+                row.is_shiny = True
+        return False
+    await _dex_rewards(db, user, kind, ref)
+    return True
+
+
+async def _claim_once(db: AsyncSession, user: User, key: str) -> bool:
+    res = await db.execute(mysql_insert(DexEntry).values(user_id=user.id, kind="reward", ref=key, is_shiny=False)
+                           .prefix_with("IGNORE"))
+    return res.rowcount == 1
+
+
+async def _dex_rewards(db: AsyncSession, user: User, kind: str, ref: str) -> None:
+    have = {(e.kind, e.ref) for e in await dex(db, user)}
+    if kind == "item":
+        items = data.guides()["items"]
+        cat = next((it["category"] for it in items if it["label"] == ref), None)
+        same = [it["label"] for it in items if it["category"] == cat]
+        if cat and all(("item", lbl) in have for lbl in same) and await _claim_once(db, user, f"itemcat:{cat}"):
+            user.bag_capacity += 1          # 분류별 품목 도감 완성 → 가방 +1칸
+            db.add(EconomyEvent(user_id=user.id, resource="bag_capacity", delta=1, reason="dex_item", ref=cat))
+    elif kind == "monster":
+        line_id = ref.rsplit("_", 1)[0]
+        lines = data.species()["lines"]
+        t = lines.get(line_id, {}).get("type")
+        if t not in data.BASE_TYPES:
+            return
+        refs = [f"{lid}_{st}" for lid, ln in lines.items() if ln["type"] == t and ln["rarity"] in ("common", "rare")
+                for st in range(1, ln.get("max_stage", 3) + 1)]
+        if all(("monster", r) in have for r in refs) and await _claim_once(db, user, f"montype:{t}"):
+            await add_resource(db, user, f"mat:{t}", 50, "dex_type", t)   # 타입별 리몬 도감 완성 → 재료 50
 
 
 async def dex(db: AsyncSession, user: User) -> list[DexEntry]:

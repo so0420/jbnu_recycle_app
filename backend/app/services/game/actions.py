@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import BagItem, ClassifyLog, Place, Region, User, Verification
+from app.models import BagItem, Capsule, ClassifyLog, Place, Region, User, Verification
 from app.services import images
 from app.services.ai.classifier import ClassifyResult
 from app.services.clock import now
@@ -82,16 +82,17 @@ async def on_scan(db: AsyncSession, user: User, res: ClassifyResult, log: Classi
     # 같은 사진(또는 거의 같은 사진)은 보상 없음
     since = now() - timedelta(days=7)
     recent = (await db.execute(select(ClassifyLog.phash).where(
-        ClassifyLog.user_id == user.id, ClassifyLog.id != log.id, ClassifyLog.created_at >= since))).scalars()
+        ClassifyLog.user_id == user.id, ClassifyLog.id != log.id, ClassifyLog.created_at >= since,
+        ClassifyLog.category.is_not(None)))).scalars()
     if any(images.hamming(log.phash, h) <= 6 for h in recent if h):
         out["duplicate"] = True
         return out
     if d.guide_xp_count < eco["account_xp"]["scan_daily_cap"]:
         d.guide_xp_count += 1
         out["xp"] = (await economy.add_xp(db, user, eco["account_xp"]["scan"], "scan", str(log.id)))["xp"]
-    ref = res.item_label or res.category
-    if await economy.add_dex(db, user, "item", ref):
-        out["dex_new"] = ref
+    if res.item_label and res.item_label in data.items_by_label():
+        if await economy.add_dex(db, user, "item", res.item_label):
+            out["dex_new"] = res.item_label
     type_ = data.category_type(res.category)
     if type_ == "none":
         return out
@@ -152,7 +153,7 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
 
     # 첫 인증이면 내 동네 확정
     if user.region_confirmed_at is None and region_obj is not None:
-        if user.region_code != region_obj.code:
+        if user.region_code and user.region_code != region_obj.code:
             out["region_suggest"] = {"code": region_obj.code, "name": region_obj.name}
         user.region_code = user.region_code or region_obj.code
         user.region_confirmed_at = now()
@@ -164,13 +165,18 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
         out["xp_breakdown"].append({"type": "verify", "amount": r["xp"]})
 
     dump_time = is_dump_time(home, now())
-    in_home = bool(home and region_obj and (region_obj.code == home.code or
-                                            region_obj.code in (home.neighbors or "").split(";")))
+    # 내 동네 = 같은 경쟁 단위(시군구·권역) 또는 인접 행정동
+    in_home = bool(home and region_obj and (
+        region_obj.code == home.code
+        or region_obj.code in (home.neighbors or "").split(";")
+        or (region.unit_of(region_obj) is not None and region.unit_of(region_obj) == region.unit_of(home))))
     out["dump_time"] = dump_time
     out["in_home_area"] = in_home
 
     # 가방 정산
-    items = await bag_items(db, user)
+    special = SPECIAL_KIND_TYPE.get(place.kind)
+    items = [it for it in await bag_items(db, user)
+             if it.type in data.BASE_TYPES or it.type == special]
     mats: Counter[str] = Counter()
     clean_n = 0
     if rewarded:
@@ -182,7 +188,6 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
             it.settled_verification_id = v.id
             if it.type not in (w.types or []):
                 w.types = [*(w.types or []), it.type]
-        special = SPECIAL_KIND_TYPE.get(place.kind)
         if special:
             mats[special] += eco["verify"]["special_materials"]
         type_counts = Counter(it.type for it in items if it.type in data.BASE_TYPES)
@@ -200,9 +205,9 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
         cap_type = special or base_type
         bonus = eco["capsule"]["clean_bonus_rate"] if items and clean_n == len(items) else 0.0
         if special:
-            have = {m.species for m in await monsters.list_owned(db, user)}
-            first_special = data.species()["capsule_pool"][special]["epic"] not in have
-            if not first_special:
+            granted = (await db.execute(select(Capsule.id).where(
+                Capsule.user_id == user.id, Capsule.type == special).limit(1))).first()
+            if granted is not None:
                 cap_type = base_type
         cap = await monsters.grant_capsule(db, user, cap_type, "verify", bonus)
         out["capsule"] = {"id": cap.id, "type": cap.type}
@@ -213,6 +218,7 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
     # 배출일 보너스 (내 동·인접 동 수거장, 배출 시간, 하루 1번)
     if rewarded and in_home and dump_time and not d.dumpday_ticket:
         d.dumpday_ticket = True
+        out["dumpday_bonus"] = True
         tickets += eco["verify"]["dumpday_ticket"]
         r = await economy.add_xp(db, user, eco["account_xp"]["dumpday_bonus"], "dumpday", str(v.id))
         out["xp"] += r["xp"]
@@ -220,8 +226,8 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
     if tickets:
         out["tickets"] = await economy.add_resource(db, user, "tickets", tickets, "verify", str(v.id))
 
-    # 지역 청결도 (내 동·인접 동일 때만)
-    if in_home and home:
+    # 지역 청결도 (내 동네일 때, 하루 보상 상한 안에서만)
+    if rewarded and in_home and home:
         unit = region.unit_of(home)
         if unit:
             out["region_restore"] = await region.on_verification(db, unit, user)
@@ -267,7 +273,7 @@ def suspicious_speed(user: User, lat: float, lng: float) -> str | None:
 async def duplicate_photo(db: AsyncSession, user: User, place: Place, phash: str) -> bool:
     since = now() - timedelta(days=7)
     q = select(Verification.phash).where(
-        Verification.created_at >= since,
+        Verification.created_at >= since, Verification.result == "success",
         (Verification.user_id == user.id) | (Verification.place_id == place.id))
     return any(h and images.hamming(phash, h) <= 6 for h in (await db.execute(q)).scalars())
 

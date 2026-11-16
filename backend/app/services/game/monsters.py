@@ -126,17 +126,20 @@ async def grant_capsule(db: AsyncSession, user: User, type_: str, source: str, b
 
 
 async def _new_monster(db: AsyncSession, user: User, line_id: str, shiny: bool) -> tuple[UserMonster, bool]:
-    """반환: (리몬, 중복 여부). 중복이면 별 +1 (최대치면 재료로)."""
+    """반환: (리몬, 중복 여부). 중복이면 별 +1 (최대치면 재료로 바꾸고 m._overflow 에 기록)."""
     existing = (await db.execute(select(UserMonster).where(
         UserMonster.user_id == user.id, UserMonster.species == line_id))).scalars().first()
     if existing:
         cap = data.economy()["capsule"]["max_stars"]
+        existing._overflow = None  # type: ignore[attr-defined]
         if existing.stars < cap:
             existing.stars += 1
         else:
             mat = data.line(line_id)["type"]
-            await economy.add_resource(db, user, f"mat:{mat}", data.economy()["capsule"]["dup_overflow_materials"],
-                                       "dup_overflow", line_id)
+            got = await economy.add_resource(db, user, f"mat:{mat}",
+                                             data.economy()["capsule"]["dup_overflow_materials"], "dup_overflow",
+                                             line_id)
+            existing._overflow = {"material": mat, "amount": got}  # type: ignore[attr-defined]
         if shiny and not existing.is_shiny:
             existing.is_shiny = True
             await economy.add_dex(db, user, "monster", f"{line_id}_{existing.stage}", True)
@@ -166,25 +169,30 @@ async def open_capsule(db: AsyncSession, user: User, cap: Capsule, rng: random.R
     shiny_rate = cfg["shiny_clean_rate"] if cap.bonus_rare > 0 else cfg["shiny_rate"]
     shiny = rng.random() < shiny_rate
     m, dup = await _new_monster(db, user, line_id, shiny)
+    stage = m.stage if dup else 1
     cap.opened_at = now()
     cap.result_monster_id = m.id
-    cap.result_json = {"monster_id": m.id, "species": line_id, "name": data.line(line_id)["names"][0],
-                       "rarity": rarity, "shiny": shiny, "duplicate": dup, "stars": m.stars,
-                       "art": f"{line_id}_{m.stage if dup else 1}", "type": data.line(line_id)["type"]}
-    await check_legend(db, user)
-    return cap.result_json
+    result = {"monster_id": m.id, "species": line_id, "name": data.line(line_id)["names"][stage - 1],
+              "rarity": rarity, "shiny": shiny, "duplicate": dup, "stars": m.stars,
+              "art": f"{line_id}_{stage}", "type": data.line(line_id)["type"],
+              "overflow": getattr(m, "_overflow", None) if dup else None}
+    legend = await check_legend(db, user)
+    if legend:
+        result["legend"] = legend
+    cap.result_json = result
+    return result
 
 
-async def check_legend(db: AsyncSession, user: User) -> bool:
-    """일반·희귀 10종을 모두 모으면 전설 지급."""
+async def check_legend(db: AsyncSession, user: User) -> dict | None:
+    """일반·희귀 10종을 모두 모으면 전설 지급. 지급했으면 보여 줄 정보를 돌려준다."""
     have = {m.species for m in await list_owned(db, user)}
     if "reverse" in have:
-        return False
+        return None
     need = {v for pool in sp()["capsule_pool"].values() for k, v in pool.items() if k in ("common", "rare")}
     if need <= have:
-        await _new_monster(db, user, "reverse", False)
-        return True
-    return False
+        m, _ = await _new_monster(db, user, "reverse", False)
+        return {"monster_id": m.id, "name": data.line("reverse")["names"][0], "art": "reverse_1"}
+    return None
 
 
 async def choose_starter(db: AsyncSession, user: User, line_id: str) -> UserMonster:
@@ -252,20 +260,25 @@ async def claim_expedition(db: AsyncSession, user: User, m: UserMonster) -> dict
     got_m = await economy.add_resource(db, user, f"mat:{mat}", cfg["materials"], "expedition", str(m.id))
     got_c = await economy.add_resource(db, user, "coins", cfg["coins"], "expedition", str(m.id))
     m.expedition_until = None
-    return {"material": mat, "materials": got_m, "coins": got_c}
+    # 파티에 빈자리가 있으면 돌아온 리몬을 다시 넣는다
+    used = {x.slot for x in await list_owned(db, user) if x.slot is not None}
+    free = next((s for s in (0, 1, 2) if s not in used), None)
+    if free is not None:
+        m.slot = free
+    return {"material": mat, "materials": got_m, "coins": got_c, "slot": m.slot}
 
 
 # ───────── 재료 교환 ─────────
 async def exchange(db: AsyncSession, user: User, src: str, dst: str, amount: int) -> dict:
     economy.require(user, "exchange")
     cfg = data.economy()["exchange"]
-    if amount <= 0 or dst not in data.MATERIALS:
-        raise HTTPException(400, "교환할 수 없습니다")
+    if amount <= 0 or amount > 1000 or dst not in data.BASE_TYPES:
+        raise HTTPException(400, "기본 재료(플라스틱·종이·금속·유리·비닐)로만 바꿀 수 있어요")
     if src == "coins":
         cost = amount * cfg["coin_per_material"]
         await economy.add_resource(db, user, "coins", -cost, "exchange", dst, scale=False)
     else:
-        if src not in data.MATERIALS or src == dst:
+        if src not in data.BASE_TYPES or src == dst:
             raise HTTPException(400, "교환할 수 없습니다")
         cost = amount * cfg["material_ratio"]
         await economy.add_resource(db, user, f"mat:{src}", -cost, "exchange", dst, scale=False)

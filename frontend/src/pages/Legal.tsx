@@ -1,18 +1,22 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const EFFECTIVE = '2026년 11월 16일';
 const SERVICE = '리사이클';
 const OPERATOR = '리사이클 팀(전북대학교 창의적공학설계 팀 과제)';
 const CONTACT = '[연락처 기재 필요: 팀 대표 이메일]';
 
-function Back() {
-  return <Link to="/" className="back">← 돌아가기</Link>;
+function Back({ embedded }: { embedded?: boolean }) {
+  const nav = useNavigate();
+  if (embedded) return null;
+  return (
+    <button className="back" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))}>← 돌아가기</button>
+  );
 }
 
-export function Privacy() {
+export function Privacy({ embedded }: { embedded?: boolean }) {
   return (
     <article className="doc">
-      <Back />
+      <Back embedded={embedded} />
       <h1>개인정보 처리방침</h1>
       <p className="small muted">시행일 {EFFECTIVE}</p>
       <p>{OPERATOR}(이하 "팀")은 「개인정보 보호법」에 따라 이용자의 개인정보를 보호하고, 관련 고충을 신속하게 처리하기 위해 다음과 같이 개인정보 처리방침을 둡니다. {SERVICE}는 수업 과제로 만든 시범 서비스이며, 시범 지역은 전주시입니다.</p>
@@ -24,8 +28,9 @@ export function Privacy() {
           <tr><td>회원가입(필수)</td><td>아이디, 비밀번호(복원할 수 없는 방식으로 암호화), 닉네임, 만 14세 이상 여부 확인, 약관 동의 일시</td><td>회원 식별, 로그인, 게임 기록 관리</td></tr>
           <tr><td>회원가입(선택)</td><td>내 동네(행정동)</td><td>동네 청결도·레이드 참여, 배출 요일 안내</td></tr>
           <tr><td>쓰레기 스캔</td><td>촬영한 사진, AI 판정 결과</td><td>분리배출 방법 안내, 게임 보상 지급, 같은 사진 재사용 방지</td></tr>
-          <tr><td>배출 인증</td><td>촬영한 사진, 인증 시점의 위치(위도·경도·오차), 촬영 시각(사진 정보에 포함된 경우)</td><td>수거장에서 실제로 배출했는지 확인, 부정 이용 방지</td></tr>
-          <tr><td>자동 수집</td><td>접속 IP, 접속 일시, 서비스 이용 기록, 로그인 유지용 쿠키</td><td>보안, 오류 확인, 과도한 요청 차단</td></tr>
+          <tr><td>배출 인증</td><td>촬영한 사진, 인증 시점의 위치(위도·경도·오차), 촬영 시각(사진 정보 또는 기기의 파일 시각)</td><td>수거장에서 실제로 배출했는지 확인, 부정 이용 방지</td></tr>
+          <tr><td>지도·인증 화면</td><td>화면을 연 순간의 기기 위치(서버에는 가까운 수거장 검색에만 쓰고 저장하지 않음)</td><td>내 주변 수거장 보여 주기</td></tr>
+          <tr><td>자동 수집</td><td>접속 IP, 접속 일시, 오류 기록, 로그인 유지용 쿠키 (접속 주소별 기록은 남기지 않음)</td><td>보안, 오류 확인, 과도한 요청 차단</td></tr>
         </tbody>
       </table></div>
       <p>팀은 이름, 전화번호, 이메일, 주민등록번호 같은 정보는 받지 않습니다. 사진에 얼굴, 집 주소 등이 찍히지 않도록 버리는 물건과 수거함만 찍어 주세요.</p>
@@ -33,8 +38,8 @@ export function Privacy() {
       <h2>2. 보유 기간</h2>
       <ul>
         <li><b>사진</b>: 찍은 날부터 30일이 지나면 자동으로 지웁니다. 탈퇴하면 바로 지웁니다.</li>
-        <li><b>배출 인증 위치(위도·경도)</b>: 30일이 지나면 지웁니다. 어느 수거장에서 인증했는지와 결과는 게임 기록으로 남습니다.</li>
-        <li><b>회원 정보와 게임 기록</b>: 탈퇴할 때까지 보관합니다. 탈퇴하면 아이디·닉네임을 알아볼 수 없는 값으로 바꾸고 비밀번호를 지웁니다.</li>
+        <li><b>배출 인증 위치(위도·경도·오차)와 마지막 인증 위치</b>: 30일이 지나면 지웁니다. 어느 수거장에서 인증했는지와 결과는 게임 기록으로 남습니다.</li>
+        <li><b>회원 정보와 게임 기록</b>: 탈퇴할 때까지 보관합니다. 탈퇴하면 아이디·닉네임을 알아볼 수 없는 값으로 바꾸고 비밀번호를 지우며, 동네 소식에 남은 닉네임도 지웁니다.</li>
         <li><b>접속 기록(서버 로그)</b>: 30일 보관 후 지웁니다.</li>
         <li>시범 서비스가 끝나면 남은 개인정보를 모두 지웁니다.</li>
       </ul>
@@ -43,11 +48,13 @@ export function Privacy() {
       <p>팀은 이용자의 개인정보를 제3자에게 제공하지 않습니다. 법령에 따라 수사기관 등이 요구하는 경우는 예외입니다.</p>
 
       <h2>4. 처리 위탁과 국외 이전</h2>
-      <p>사진 판정은 먼저 팀이 운영하는 서버의 AI(국내)로 처리합니다. 국내 AI가 판단하기 어려운 경우에만 아래 업체에 사진을 보내 다시 판정합니다.</p>
+      <p>사진 판정은 먼저 팀이 운영하는 서버의 AI(국내)로 처리합니다. 국내 AI가 판단하기 어렵거나 사용할 수 없을 때만 아래 업체에 사진을 보내 다시 판정합니다. 지도와 글꼴을 불러올 때도 아래 해외 서비스에 접속합니다.</p>
       <div className="table-wrap"><table>
         <thead><tr><th>받는 자</th><th>국가</th><th>이전 항목</th><th>시점·방법</th><th>목적</th><th>보유 기간</th></tr></thead>
         <tbody>
-          <tr><td>OpenAI, L.L.C.</td><td>미국</td><td>사진(이미지) 1장. 아이디·위치는 보내지 않음</td><td>국내 AI가 애매하다고 판단할 때, 암호화된 통신(HTTPS)으로 전송</td><td>쓰레기 품목·배출 사진 판정</td><td>OpenAI의 API 데이터 정책에 따름(학습에 쓰지 않음, 남용 감시 목적으로 최대 30일 보관 후 삭제)</td></tr>
+          <tr><td>OpenAI, L.L.C. (privacy@openai.com)</td><td>미국</td><td>사진(이미지) 1장. 아이디·위치는 보내지 않음</td><td>국내 AI가 판단하지 못할 때, 암호화된 통신(HTTPS)으로 전송</td><td>쓰레기 품목·배출 사진 판정</td><td>대화 저장 기능을 끄고 보냄(store=false). OpenAI API 데이터 정책에 따라 학습에 쓰지 않으며 남용 감시 목적으로 최대 30일 보관 후 삭제</td></tr>
+          <tr><td>OpenStreetMap Foundation</td><td>영국</td><td>접속 IP, 보고 있는 지도 영역(지도 그림 요청)</td><td>지도 화면을 볼 때 기기가 직접 요청</td><td>지도 그림 표시</td><td>OSMF 정책에 따름</td></tr>
+          <tr><td>Google LLC (Google Fonts)</td><td>미국</td><td>접속 IP, 브라우저 정보</td><td>앱을 열 때 기기가 글꼴 파일 요청</td><td>화면 글꼴 표시</td><td>Google 정책에 따름</td></tr>
           <tr><td>Cloudflare, Inc.</td><td>미국 등</td><td>서비스 이용 중 주고받는 모든 통신(접속 IP 포함)</td><td>접속할 때마다, 암호화된 통신으로 중계</td><td>보안 연결(HTTPS) 제공, 공격 차단</td><td>중계 후 저장하지 않음(보안 로그는 Cloudflare 정책에 따름)</td></tr>
         </tbody>
       </table></div>
@@ -84,10 +91,10 @@ export function Privacy() {
   );
 }
 
-export function Terms() {
+export function Terms({ embedded }: { embedded?: boolean }) {
   return (
     <article className="doc">
-      <Back />
+      <Back embedded={embedded} />
       <h1>이용약관</h1>
       <p className="small muted">시행일 {EFFECTIVE}</p>
 
@@ -111,7 +118,7 @@ export function Terms() {
       </ul>
 
       <h2>제4조 (위치 정보)</h2>
-      <p>배출 인증과 지도 기능은 이용자가 버튼을 누를 때만 기기의 위치를 사용합니다. 위치는 가까운 수거장을 찾고 인증을 확인하는 데만 쓰며, 처리 기간과 방법은 <Link to="/privacy">개인정보 처리방침</Link>을 따릅니다. 기기 설정에서 언제든 위치 권한을 끌 수 있으며, 이 경우 배출 인증을 할 수 없습니다.</p>
+      <p>지도 화면과 배출 인증 화면을 열 때, 그리고 '위치 새로고침'을 누를 때 기기의 위치를 사용합니다. 위치는 가까운 수거장을 찾고 인증을 확인하는 데만 쓰며, 처리 기간과 방법은 <Link to="/privacy">개인정보 처리방침</Link>과 아래 위치기반서비스 이용약관을 따릅니다. 기기 설정에서 언제든 위치 권한을 끌 수 있으며, 이 경우 배출 인증을 할 수 없습니다.</p>
 
       <h2>제5조 (게임 재화)</h2>
       <ul>
@@ -148,6 +155,42 @@ export function Terms() {
 
       <h2>제11조 (분쟁 해결)</h2>
       <p>서비스 이용과 관련한 문의는 {CONTACT}로 보내 주세요. 분쟁이 생기면 대한민국 법을 따릅니다.</p>
+    </article>
+  );
+}
+
+export function LocationTerms({ embedded }: { embedded?: boolean }) {
+  return (
+    <article className="doc">
+      <Back embedded={embedded} />
+      <h1>위치기반서비스 이용약관</h1>
+      <p className="small muted">시행일 {EFFECTIVE}</p>
+      <h2>제1조 (목적)</h2>
+      <p>이 약관은 {OPERATOR}이 {SERVICE}에서 제공하는 위치기반서비스의 이용 조건을 정합니다.</p>
+      <h2>제2조 (서비스 내용)</h2>
+      <ul>
+        <li>내 주변 분리배출 장소·수거함 찾기 (지도 화면)</li>
+        <li>수거장에서 배출했는지 위치로 확인하기 (배출 인증)</li>
+        <li>내 동네(행정동) 확정과 동네 대항전 점수 반영</li>
+      </ul>
+      <h2>제3조 (개인위치정보의 이용·보유)</h2>
+      <ul>
+        <li>지도 화면의 위치는 주변 수거장을 찾는 요청에만 쓰고 저장하지 않습니다.</li>
+        <li>배출 인증의 위치(위도·경도·오차)는 인증 확인과 부정 이용 방지를 위해 30일 동안 보관한 뒤 지웁니다.</li>
+        <li>위치정보 이용·제공 사실 확인자료는 인증 기록(시각, 수거장)으로 남기며, 회원 탈퇴 때까지(법령에 따라 최소 6개월) 보관합니다. 좌표는 포함하지 않습니다.</li>
+      </ul>
+      <h2>제4조 (제3자 제공)</h2>
+      <p>팀은 이용자의 개인위치정보를 제3자에게 제공하지 않습니다.</p>
+      <h2>제5조 (이용자의 권리)</h2>
+      <ul>
+        <li>이용자는 언제든지 위치정보 이용 동의를 철회할 수 있습니다(기기 위치 권한 끄기 또는 회원 탈퇴).</li>
+        <li>이용자는 자신의 위치정보 이용·제공 사실 확인자료의 열람과 정정을 요구할 수 있습니다.</li>
+        <li>만 14세 미만은 이용할 수 없습니다.</li>
+      </ul>
+      <h2>제6조 (위치정보관리책임자)</h2>
+      <p>{OPERATOR} · 연락처: {CONTACT}</p>
+      <h2>제7조 (손해배상·분쟁)</h2>
+      <p>위치정보 처리와 관련한 분쟁은 방송통신위원회 또는 개인정보분쟁조정위원회에 조정을 신청할 수 있습니다.</p>
     </article>
   );
 }

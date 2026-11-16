@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import auth
 from app.database import get_db
 from app.models import Capsule, User
+from app.services import locks
 from app.services.game import actions, data, economy, missions, monsters
 
 router = APIRouter()
@@ -34,6 +35,7 @@ class StarterIn(BaseModel):
 
 @router.post("/monsters/starter")
 async def starter(body: StarterIn, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     m = await monsters.choose_starter(db, user, body.species)
     await db.commit()
     return monsters.view(m)
@@ -41,6 +43,7 @@ async def starter(body: StarterIn, user: User = Depends(auth.current_user), db: 
 
 @router.post("/monsters/{mid}/levelup")
 async def levelup(mid: int, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     m = await monsters.get_owned(db, user, mid)
     await monsters.level_up(db, user, m)
     await db.commit()
@@ -49,6 +52,7 @@ async def levelup(mid: int, user: User = Depends(auth.current_user), db: AsyncSe
 
 @router.post("/monsters/{mid}/evolve")
 async def evolve(mid: int, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     m = await monsters.get_owned(db, user, mid)
     r = await monsters.evolve(db, user, m)
     await db.commit()
@@ -62,6 +66,7 @@ class PartyIn(BaseModel):
 
 @router.put("/party")
 async def set_party(body: PartyIn, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     await monsters.set_party(db, user, body.ids, body.timings)
     await db.commit()
     return {"monsters": await _monsters_payload(db, user)}
@@ -69,6 +74,7 @@ async def set_party(body: PartyIn, user: User = Depends(auth.current_user), db: 
 
 @router.post("/monsters/{mid}/expedition")
 async def expedition(mid: int, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     m = await monsters.get_owned(db, user, mid)
     r = await monsters.send_expedition(db, user, m)
     await db.commit()
@@ -77,6 +83,7 @@ async def expedition(mid: int, user: User = Depends(auth.current_user), db: Asyn
 
 @router.post("/monsters/{mid}/expedition/claim")
 async def expedition_claim(mid: int, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     m = await monsters.get_owned(db, user, mid)
     r = await monsters.claim_expedition(db, user, m)
     await db.commit()
@@ -91,6 +98,7 @@ class ExchangeIn(BaseModel):
 
 @router.post("/exchange")
 async def exchange(body: ExchangeIn, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     r = await monsters.exchange(db, user, body.src, body.dst, body.amount)
     await db.commit()
     return r
@@ -105,7 +113,8 @@ async def capsules(user: User = Depends(auth.current_user), db: AsyncSession = D
 
 @router.post("/capsules/{cid}/open")
 async def open_capsule(cid: int, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
-    c = await db.get(Capsule, cid)
+    user = await locks.lock_user(db, user)
+    c = await db.get(Capsule, cid, populate_existing=True)
     if c is None:
         raise HTTPException(404, "캡슐을 찾을 수 없습니다")
     r = await monsters.open_capsule(db, user, c)
@@ -157,6 +166,7 @@ async def get_missions(user: User = Depends(auth.current_user), db: AsyncSession
 
 @router.post("/missions/{mission_id}/claim")
 async def claim_mission(mission_id: str, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     r = await missions.claim(db, user, mission_id)
     await db.commit()
     return r
@@ -168,6 +178,7 @@ class MatChoiceIn(BaseModel):
 
 @router.post("/missions/types3/material")
 async def claim_types3(body: MatChoiceIn, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     r = await missions.claim_weekly_materials(db, user, body.material)
     await db.commit()
     return r

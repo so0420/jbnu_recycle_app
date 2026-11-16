@@ -96,7 +96,7 @@ export default function MonsterDetail() {
       {me?.unlocks.expedition && (
         <div className="card">
           <h3>탐사</h3>
-          <p className="small muted">12시간 동안 탐사를 보내면 {MAT_NAMES[m.type] ?? '재료'} 2개와 코인 15를 가져와요. 탐사 중에는 파티에서 빠져요.</p>
+          <p className="small muted">12시간 동안 탐사를 보내면 {MAT_NAMES[m.type] ?? '재료'} {2 * (me?.economy_multiplier ?? 1)}개와 코인 {15 * (me?.economy_multiplier ?? 1)}을 가져와요. 탐사 중에는 파티에서 빠지고, 돌아오면 빈자리에 다시 들어가요.</p>
           {m.on_expedition ? (
             <button className="btn block" disabled={busy || !expDone} onClick={() => act(`/monsters/${m.id}/expedition/claim`, '탐사 보상을 받았어요')}>
               {expDone ? '보상 받기' : `돌아오는 시간 ${new Date(m.expedition_until!).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}`}

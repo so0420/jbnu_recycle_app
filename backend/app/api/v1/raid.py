@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import auth
 from app.database import get_db
 from app.models import RaidAttempt, User
+from app.services import locks
 from app.services.game import economy, monsters
 from app.services.game import raid as raid_svc
 from app.services.game import region
@@ -31,16 +32,15 @@ async def raid_status(user: User = Depends(auth.current_user), db: AsyncSession 
 
 @router.post("/raid/attempt")
 async def attempt(user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     r = await raid_svc.attempt(db, user)
     await db.commit()
     return r
 
 
 @router.get("/regions")
-async def standings(db: AsyncSession = Depends(get_db)):
-    rows = await region.standings(db)
-    await db.commit()
-    return rows
+async def standings(mine: str | None = None, db: AsyncSession = Depends(get_db)):
+    return await region.standings(db, mine)
 
 
 @router.get("/regions/{unit}/feed")

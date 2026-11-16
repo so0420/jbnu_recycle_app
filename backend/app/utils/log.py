@@ -74,8 +74,8 @@ def get_logger(name: str = "songbook"):
     logger.addHandler(console_handler)
 
     # 파일 핸들러 (자정마다 로테이션)
-    current_time = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-    log_file = os.path.join(LOG_DIR, f"{current_time}.log")
+    # 파일 하나(app.log)를 자정마다 돌리고 30개만 남긴다 (개인정보 처리방침: 접속 기록 30일)
+    log_file = os.path.join(LOG_DIR, "app.log")
 
     file_handler = TimedRotatingFileHandler(
         log_file,
@@ -111,13 +111,9 @@ def setup_uvicorn_logging():
 
     uvicorn_file_formatter = logging.Formatter(uvicorn_format, datefmt='%Y-%m-%d %H:%M:%S')
 
-    # 앱 로거의 파일 핸들러 경로를 가져옴
+    # 앱 로거의 파일 핸들러를 그대로 같이 쓴다 (같은 파일을 두 핸들러가 돌리면 충돌)
     app_logger = get_logger()
-    log_file = None
-    for h in app_logger.handlers:
-        if isinstance(h, TimedRotatingFileHandler):
-            log_file = h.baseFilename
-            break
+    shared_file_handler = next((h for h in app_logger.handlers if isinstance(h, TimedRotatingFileHandler)), None)
 
     for logger_name in target_loggers:
         uvicorn_logger = logging.getLogger(logger_name)
@@ -128,17 +124,8 @@ def setup_uvicorn_logging():
         console_h.setFormatter(uvicorn_console_formatter)
         uvicorn_logger.addHandler(console_h)
 
-        if log_file:
-            file_h = TimedRotatingFileHandler(
-                log_file,
-                when="midnight",
-                interval=1,
-                backupCount=30,
-                encoding="utf-8"
-            )
-            file_h.setLevel(logging.DEBUG)
-            file_h.setFormatter(uvicorn_file_formatter)
-            uvicorn_logger.addHandler(file_h)
+        if shared_file_handler is not None:
+            uvicorn_logger.addHandler(shared_file_handler)
 
         uvicorn_logger.propagate = False
         uvicorn_logger.setLevel(logging.INFO)

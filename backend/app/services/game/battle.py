@@ -56,9 +56,9 @@ class Result:
     log: list[dict] = field(default_factory=list)
 
 
-def type_mult(att: str, dfn: str, weak: str | None) -> float:
+def type_mult(att: str, dfn: str, weak: str | list | None) -> float:
     beats = data.species()["type_beats"]
-    if weak and att == weak:
+    if weak and (att == weak or (isinstance(weak, list) and att in weak)):
         return 1.5
     if beats.get(att) == dfn:
         return 1.5
@@ -79,7 +79,7 @@ def make_boss(key: str, battle_hp: float, party_atk_sum: float) -> list[Unit]:
     b = data.bosses()["bosses"][key]
     if b["gimmick"] == "swarm":
         mini_hp = max(60.0, party_atk_sum * 0.9)
-        return [Unit(uid=f"b{i}", name=f"{b['name']} {i + 1}", side="enemy", type="plastic", role="boss",
+        return [Unit(uid=f"b{i}", name=f"{b['name']} {i + 1}", side="enemy", type="boss", role="boss",
                      hp=mini_hp, max_hp=mini_hp, atk=b["atk"], def_=b["def"], spd=b["spd"] + i, art=key)
                 for i in range(5)]
     u = Unit(uid="b0", name=b["name"], side="enemy", type="boss", role="boss", hp=battle_hp, max_hp=battle_hp,
@@ -105,10 +105,12 @@ def simulate(party: list[Unit], boss_key: str, battle_hp: float, seed: int, boss
     def alive(side: str) -> list[Unit]:
         return [u for u in (party if side == "ally" else enemies) if u.alive]
 
-    def weak_now(rnd: int) -> str | None:
+    def weak_now(rnd: int) -> str | list | None:
         if gimmick == "rotate_weak":
             return BASE_TYPES[((rnd - 1) // 3) % 5]
         w = bcfg.get("weak")
+        if isinstance(w, list):
+            return [x for x in w if x in BASE_TYPES]
         return w if w in BASE_TYPES else None
 
     def hit(att: Unit, tgt: Unit, mult: float, rnd: int, crit_rate: float = 0.05, act: str = "basic") -> float:
@@ -226,6 +228,7 @@ def simulate(party: list[Unit], boss_key: str, battle_hp: float, seed: int, boss
                             hit(u, f, 0.9, rnd, act="cycle")
                         for a in alive("ally"):
                             a.hp = min(a.max_hp, a.hp + u.atk * 0.4)
+                        log.append({"r": rnd, "a": u.uid, "act": "heal_all", "amount": round(u.atk * 0.4)})
                 else:
                     tgt = min(foes, key=lambda f: f.hp) if len(foes) > 1 else foes[0]
                     hit(u, tgt, 1.0, rnd)

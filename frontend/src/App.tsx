@@ -19,14 +19,22 @@ import Regions from './pages/Regions';
 import Missions from './pages/Missions';
 import MePage from './pages/MePage';
 import Admin from './pages/Admin';
-import { Privacy, Terms } from './pages/Legal';
+import { LocationTerms, Privacy, Terms } from './pages/Legal';
 
 const MapPage = lazy(() => import('./pages/MapPage'));
 
 function Guard({ children }: { children: JSX.Element }) {
-  const { me, loading } = useStore();
+  const { me, loading, offline, refresh } = useStore();
   const loc = useLocation();
   if (loading) return <div className="splash">불러오는 중…</div>;
+  if (!me && offline) {
+    return (
+      <div className="splash col" style={{ gap: 12, textAlign: 'center', padding: 24 }}>
+        <p>서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.</p>
+        <button className="btn" onClick={() => void refresh()}>다시 시도</button>
+      </div>
+    );
+  }
   if (!me) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   if (!me.starter_done && loc.pathname !== '/starter') return <Navigate to="/starter" replace />;
   return children;
@@ -39,6 +47,7 @@ export default function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/location-terms" element={<LocationTerms />} />
       <Route path="/starter" element={<Guard><Starter /></Guard>} />
       <Route element={<Guard><Layout /></Guard>}>
         <Route path="/" element={<Home />} />

@@ -20,6 +20,27 @@ class SystemOneError(Exception):
     pass
 
 
+QUEUE_WAIT = 25.0
+
+
+def _validate(questions: dict, answers: dict) -> dict:
+    """요청한 질문마다 기대한 형태의 답이 있는지 확인. 아니면 SystemOneError."""
+    for key, q in questions.items():
+        a = answers.get(key)
+        if not isinstance(a, dict):
+            raise SystemOneError(f"답 없음: {key}")
+        if q["type"] == "choice":
+            probs = a.get("probabilities")
+            if not isinstance(probs, dict) or not probs or a.get("choice") not in q["criteria"]:
+                raise SystemOneError(f"choice 형식 오류: {key}")
+            if any(k not in q["criteria"] for k in probs):
+                raise SystemOneError(f"알 수 없는 선택지: {key}")
+        elif q["type"] == "noul":
+            if not isinstance(a.get("noul"), (int, float)):
+                raise SystemOneError(f"noul 형식 오류: {key}")
+    return answers
+
+
 async def ask(state: str, images_b64: list[str], questions: dict) -> dict:
     """questions 예: {"category": {"type": "choice", "instructions": ..., "criteria": {...}},
     "dirty": {"type": "noul", "instructions": ...}}
@@ -29,17 +50,23 @@ async def ask(state: str, images_b64: list[str], questions: dict) -> dict:
         raise SystemOneBusy()
     _waiting += 1
     try:
-        async with _sem:
+        try:
+            await asyncio.wait_for(_sem.acquire(), timeout=QUEUE_WAIT)
+        except asyncio.TimeoutError as e:
+            raise SystemOneBusy() from e
+        try:
             payload = {"model": settings.SYSTEM_ONE_MODEL, "state": state, "images": images_b64,
                        "questions": questions}
             try:
                 async with httpx.AsyncClient(timeout=settings.SYSTEM_ONE_TIMEOUT) as client:
                     r = await client.post(settings.SYSTEM_ONE_URL, json=payload)
                     r.raise_for_status()
-                    return r.json()["answers"]
-            except (httpx.HTTPError, KeyError, ValueError) as e:
+                    return _validate(questions, r.json()["answers"])
+            except (httpx.HTTPError, KeyError, ValueError, TypeError) as e:
                 logger.warning(f"System One 호출 실패: {e!r}")
                 raise SystemOneError(str(e)) from e
+        finally:
+            _sem.release()
     finally:
         _waiting -= 1
 

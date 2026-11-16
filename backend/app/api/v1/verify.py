@@ -1,22 +1,24 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.places import place_view
+from app.api.v1.scan import refund_ai, reserve_ai
 from app.core import auth
 from app.core.config import settings
 from app.core.security import limiter
 from app.database import get_db
-from app.models import User, Verification
-from app.services import images
+from app.models import Place, User, Verification
+from app.services import images, locks
 from app.services.ai import classifier
-from app.services.clock import now
-from app.services.game import actions, economy
-from app.api.v1.places import place_view
+from app.services.clock import TZ, now
+from app.services.game import actions
 
 router = APIRouter()
+OLD_PHOTO_MINUTES = 10
 
 
 @router.get("/verify/nearest")
@@ -33,6 +35,7 @@ async def nearest(lat: float, lng: float, accuracy: float = 30, db: AsyncSession
 @limiter.limit("6/minute")
 async def verify(request: Request, photo: UploadFile = File(...), lat: float = Form(...), lng: float = Form(...),
                  accuracy: float = Form(...), idempotency_key: str = Form(..., min_length=8, max_length=64),
+                 taken_ms: int | None = Form(None),
                  user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
     old = (await db.execute(select(Verification).where(Verification.idempotency_key == idempotency_key))).scalars().first()
     if old:
@@ -47,12 +50,18 @@ async def verify(request: Request, photo: UploadFile = File(...), lat: float = F
         img = images.open_image(raw)
     except images.BadImage:
         raise HTTPException(400, "사진을 읽을 수 없어요. 다시 찍어 주세요")
-    taken = images.exif_taken_at(raw)
     ph = images.phash(img)
-    v = Verification(user_id=user.id, lat=lat, lng=lng, accuracy=accuracy, result="fail",
-                     idempotency_key=idempotency_key, phash=ph, judged_by="none")
+    taken = images.exif_taken_at(raw)
+    if taken is None and taken_ms:
+        # 앱이 사진을 다시 저장하면서 EXIF 가 빠지므로, 기기가 알려 준 파일 시각을 대신 쓴다
+        taken = datetime.fromtimestamp(taken_ms / 1000, TZ).replace(tzinfo=None)
+    uid = user.id
 
-    async def fail(code: str, message: str, detail: dict | None = None) -> dict:
+    def new_v() -> Verification:
+        return Verification(user_id=uid, lat=lat, lng=lng, accuracy=accuracy, result="fail",
+                            idempotency_key=idempotency_key, phash=ph, judged_by="none")
+
+    async def fail(v: Verification, code: str, message: str, detail: dict | None = None) -> dict:
         v.fail_code = code
         out = {"result": "fail", "code": code, "message": message, "detail": detail or {}}
         v.reward_json = out
@@ -63,38 +72,70 @@ async def verify(request: Request, photo: UploadFile = File(...), lat: float = F
             await db.rollback()
         return out
 
+    # ── 1단계: 위치·중복 확인 (짧은 트랜잭션) ──
+    v = new_v()
+    user = await locks.lock_user(db, user)
     try:
         place, dist = await actions.check_location(db, lat, lng, accuracy)
     except actions.VerifyFail as e:
-        return await fail(e.code, e.message, e.detail)
+        return await fail(v, e.code, e.message, e.detail)
     v.place_id, v.distance_m = place.id, round(dist, 1)
-
-    if taken and abs(now() - taken) > timedelta(minutes=10):
-        return await fail("OLD_PHOTO", "방금 찍은 사진으로 인증해 주세요")
+    if taken and abs(now() - taken) > timedelta(minutes=OLD_PHOTO_MINUTES):
+        return await fail(v, "OLD_PHOTO", "방금 찍은 사진으로 인증해 주세요")
     if await actions.place_done_today(db, user, place):
-        return await fail("PLACE_ALREADY_TODAY", "이 수거장은 오늘 이미 인증했어요. 내일 다시 와 주세요")
+        return await fail(v, "PLACE_ALREADY_TODAY", "이 수거장은 오늘 이미 인증했어요. 내일 다시 와 주세요")
     if await actions.duplicate_photo(db, user, place, ph):
-        return await fail("DUPLICATE_PHOTO", "이미 쓴 사진이에요. 새로 찍어 주세요")
+        return await fail(v, "DUPLICATE_PHOTO", "이미 쓴 사진이에요. 새로 찍어 주세요")
+    place_id = place.id
+    await db.rollback()
+    await reserve_ai(db, user)
 
+    # ── 2단계: AI 판정 (잠금 없이) ──
     judge = await classifier.judge_disposal(db, images.to_b64_jpeg(img, settings.AI_IMAGE_EDGE))
-    v.judged_by, v.score = judge.judged_by, judge.score
+    if judge.unavailable:
+        await refund_ai(db, user)
+        return await fail(_with_place(new_v(), place_id, dist), "AI_BUSY",
+                          "AI가 지금 바빠요. 잠시 뒤 다시 인증해 주세요")
     if not judge.passed:
-        return await fail("NOT_RECYCLING_PHOTO", "분리배출하는 모습이 보이게 찍어 주세요 (수거함과 버리는 물건이 함께 나오게)")
+        v = _with_place(new_v(), place_id, dist)
+        v.judged_by, v.score = judge.judged_by, judge.score
+        return await fail(v, "NOT_RECYCLING_PHOTO",
+                          "분리배출하는 모습이 보이게 찍어 주세요 (수거함과 버리는 물건이 함께 나오게)")
 
+    # ── 3단계: 잠금 후 다시 확인하고 보상 (동시 요청 방지) ──
+    user = await locks.lock_user(db, user)
+    place = await db.get(Place, place_id)
+    v = _with_place(new_v(), place_id, dist)
+    v.judged_by, v.score = judge.judged_by, judge.score
+    if await actions.place_done_today(db, user, place):
+        return await fail(v, "PLACE_ALREADY_TODAY", "이 수거장은 오늘 이미 인증했어요. 내일 다시 와 주세요")
+    if await actions.duplicate_photo(db, user, place, ph):
+        return await fail(v, "DUPLICATE_PHOTO", "이미 쓴 사진이에요. 새로 찍어 주세요")
     v.photo_path = images.save(img, "verify")
-    v.result = "success"
-    reasons = [r for r in [actions.suspicious_speed(user, lat, lng), "AI 판단 보류" if judge.uncertain else None] if r]
-    v.flagged = bool(reasons)
-    v.flag_reason = ", ".join(reasons) or None
-    db.add(v)
-    await db.flush()
-    reward = await actions.settle(db, user, place, v)
-    user.last_lat, user.last_lng, user.last_verified_at = lat, lng, now()
-    out = {"result": "success", "judged_by": judge.judged_by,
-           "place": place_view(place, dist), "reward": reward}
-    v.reward_json = out
-    await db.commit()
+    try:
+        v.result = "success"
+        reasons = [r for r in [actions.suspicious_speed(user, lat, lng),
+                               "AI 판단 보류" if judge.uncertain else None,
+                               "촬영 시각 정보 없음" if taken is None else None] if r]
+        v.flagged = bool(reasons)
+        v.flag_reason = ", ".join(reasons) or None
+        db.add(v)
+        await db.flush()
+        reward = await actions.settle(db, user, place, v)
+        user.last_lat, user.last_lng, user.last_verified_at = lat, lng, now()
+        out = {"result": "success", "judged_by": judge.judged_by, "place": place_view(place, dist), "reward": reward}
+        v.reward_json = out
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        images.remove(v.photo_path)
+        raise HTTPException(409, "같은 요청이 이미 처리됐어요")
+    except Exception:
+        images.remove(v.photo_path)
+        raise
     return out
 
 
-_ = economy
+def _with_place(v: Verification, place_id: int, dist: float) -> Verification:
+    v.place_id, v.distance_m = place_id, round(dist, 1)
+    return v

@@ -12,6 +12,9 @@ from app.core.config import settings
 from app.services.clock import now
 
 MAX_EDGE_STORE = 1280
+MAX_PIXELS = 40_000_000          # 약 8000×5000. 이보다 크면 거절 (압축 폭탄 방지)
+MAX_EDGE_IN = 10_000
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 
 class BadImage(Exception):
@@ -19,10 +22,19 @@ class BadImage(Exception):
 
 
 def open_image(data: bytes) -> Image.Image:
+    import warnings
     try:
-        img = Image.open(io.BytesIO(data))
-        img.load()
-    except (UnidentifiedImageError, OSError) as e:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            img = Image.open(io.BytesIO(data))
+            w, h = img.size
+            if w * h > MAX_PIXELS or max(w, h) > MAX_EDGE_IN:
+                raise BadImage("사진이 너무 커요")
+            if img.format == "JPEG":
+                img.draft("RGB", (2048, 2048))     # 큰 JPEG 는 축소해서 읽는다
+            img.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning,
+            ValueError) as e:
         raise BadImage("이미지를 읽을 수 없습니다") from e
     img = ImageOps.exif_transpose(img)
     return img.convert("RGB")
@@ -82,3 +94,9 @@ def phash(img: Image.Image) -> str:
 
 def hamming(a: str, b: str) -> int:
     return bin(int(a, 16) ^ int(b, 16)).count("1")
+
+
+def remove(rel_path: str) -> None:
+    """요청이 실패했을 때 저장해 둔 사진을 지운다."""
+    if rel_path:
+        (Path(settings.UPLOAD_DIR) / rel_path).unlink(missing_ok=True)

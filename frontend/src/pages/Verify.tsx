@@ -27,6 +27,7 @@ interface Reward {
   evolution_ready?: { id: number; name: string }[];
   dump_time?: boolean;
   in_home_area?: boolean;
+  dumpday_bonus?: boolean;
   region_suggest?: { code: string; name: string };
   note?: string;
 }
@@ -72,6 +73,7 @@ export default function Verify() {
       fd.append('lng', String(f.lng));
       fd.append('accuracy', String(Math.round(f.accuracy)));
       fd.append('idempotency_key', uuid());
+      fd.append('taken_ms', String(file.lastModified || Date.now()));
       const r = await upload<VerifyRes>('/verify', fd);
       setRes(r);
       if (r.result === 'success') void refresh();
@@ -102,10 +104,13 @@ export default function Verify() {
             <div className="col" style={{ gap: 4 }}>
               <div className="row wrap" style={{ gap: 6 }}>
                 <b>{target.name || target.kind_name}</b>
-                <span className={`chip ${inRange ? 'ok' : 'bad'}`}>{target.distance_m}m {inRange ? '· 인증 가능' : `· ${near?.limit_m}m 안으로 가 주세요`}</span>
+                <span className={`chip ${inRange ? 'ok' : 'bad'}`}>
+                  {target.distance_m}m{' '}
+                  {inRange ? '· 인증 가능' : !near?.accuracy_ok ? '· 위치 정확도가 낮아요' : `· ${near?.limit_m}m 안으로 가 주세요`}
+                </span>
               </div>
               <span className="small muted">{target.address} {target.detail}</span>
-              {fix && <span className="tiny muted">내 위치 오차 약 {Math.round(fix.accuracy)}m</span>}
+              {fix && <span className="tiny muted">내 위치 오차 약 {Math.round(fix.accuracy)}m{near && !near.accuracy_ok ? ' · 하늘이 보이는 곳에서 위치를 새로고침해 주세요' : ''}</span>}
             </div>
           )}
         </div>
@@ -147,7 +152,7 @@ export default function Verify() {
               <div className="r wrap">{Object.entries(rw.materials).map(([k, n]) => <span key={k} className="row" title={MAT_NAMES[k]}><Mat k={k} n={n} /></span>)}</div>
             )}
             {rw.coins ? <div className="r"><Icon name="coin" size={22} />에코 코인 +{rw.coins}</div> : null}
-            {rw.tickets ? <div className="r"><Icon name="ticket" size={22} />도전권 +{rw.tickets}{rw.dump_time && rw.in_home_area ? ' (배출일 보너스 포함)' : ''}</div> : null}
+            {rw.tickets ? <div className="r"><Icon name="ticket" size={22} />도전권 +{rw.tickets}{rw.dumpday_bonus ? ' (배출일 보너스 포함)' : ''}</div> : null}
             {rw.region_restore ? <div className="r"><Icon name="type_paper" size={22} />우리 동네 청결도 +{rw.region_restore} → {rw.region_cleanliness}</div> : null}
             {rw.stamp_new && <div className="r"><Icon name="stamp" size={22} />새 수거장 스탬프!</div>}
             {rw.weekly && <div className="r">주간 목표 {rw.weekly.count}/{rw.weekly.goal}{rw.weekly.completed_now ? ' 달성!' : ''}</div>}

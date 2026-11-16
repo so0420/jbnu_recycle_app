@@ -18,11 +18,13 @@ class Zone(Base):
 
 
 class Region(Base):
-    """전주시 행정동."""
+    """전국 행정동."""
     __tablename__ = "regions"
     code: Mapped[str] = mapped_column(String(10), primary_key=True)
     name: Mapped[str] = mapped_column(String(40))
-    gu: Mapped[str] = mapped_column(String(20))
+    gu: Mapped[str] = mapped_column(String(40))                     # 시군구 표시 이름 (예: 전주시 완산구)
+    sido: Mapped[str] = mapped_column(String(20), default="", index=True)
+    sigungu_code: Mapped[str] = mapped_column(String(5), default="", index=True)
     population: Mapped[int | None] = mapped_column(Integer, nullable=True)
     center_lat: Mapped[float] = mapped_column(Float)
     center_lng: Mapped[float] = mapped_column(Float)
@@ -48,17 +50,22 @@ class Place(Base):
     region_code: Mapped[str | None] = mapped_column(ForeignKey("regions.code"), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    __table_args__ = (Index("ix_places_latlng", "lat", "lng"),)
+    __table_args__ = (Index("ix_places_latlng", "lat", "lng"),
+                      UniqueConstraint("source", "source_id", name="ux_places_source"))
 
 
 class User(TimestampMixin, Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    login_id: Mapped[str] = mapped_column(String(30), unique=True)
+    login_id: Mapped[str] = mapped_column(String(40), unique=True)
     password_hash: Mapped[str] = mapped_column(String(200))
     nickname: Mapped[str] = mapped_column(String(30))
     role: Mapped[str] = mapped_column(String(10), default="user")
     agreed_terms_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    age_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    agreed_location_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    policy_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     region_code: Mapped[str | None] = mapped_column(ForeignKey("regions.code"), nullable=True)
     region_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     region_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

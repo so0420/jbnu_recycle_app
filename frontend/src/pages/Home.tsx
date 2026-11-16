@@ -54,7 +54,7 @@ export default function Home() {
         {reg ? (
           <p className="small muted">
             재활용 {dumpDaysText(reg.dump_weekdays)} ·{' '}
-            {me.today.dump_time_now
+            {me.today.dump_time_now && !me.today.dumpday_ticket_taken
               ? <b style={{ color: 'var(--accent)' }}>지금 배출 시간이에요! 인증하면 도전권 +1</b>
               : nextDump
                 ? `다음 배출 시간: ${['일', '월', '화', '수', '목', '금', '토'][nextDump.getDay()]}요일 ${nextDump.getHours() >= 12 ? '오후' : '오전'} ${nextDump.getHours() % 12 || 12}시부터`

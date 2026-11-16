@@ -8,7 +8,7 @@ import { fmt, TYPE_NAMES } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
 import type { BattleEvent, BattleUnit, Monster } from '../lib/types';
 
-interface BossView { key: string; name: string; weak: string; desc: string; habit: string }
+interface BossView { key: string; name: string; weak: string | string[]; desc: string; habit: string }
 interface RaidRes {
   unit: string; boss: BossView; hp: number; max_hp: number; killed: boolean; next_boss: BossView;
   board: { nickname: string; damage: number; attempts: number }[]; my_damage: number; my_attempts: number;
@@ -20,7 +20,8 @@ interface AttemptRes {
   reward: { coins: number; materials: Record<string, number>; xp?: number };
 }
 
-const weakText = (w: string) => (w === 'rotate' ? '3라운드마다 바뀜' : TYPE_NAMES[w]);
+const weakText = (w: string | string[]) =>
+  Array.isArray(w) ? w.map((x) => TYPE_NAMES[x]).join('·') : w === 'rotate' ? '3라운드마다 바뀜' : TYPE_NAMES[w];
 
 export default function Raid() {
   const { me, refresh, toast } = useStore();
@@ -116,6 +117,7 @@ export default function Raid() {
             </div>
           ))}
         </div>
+        {r.party.length === 0 && <p className="caution">파티가 비어 있어요. <Link to="/party">파티 편성</Link>에서 리몬을 넣어 주세요.</p>}
         <button className="btn block" disabled={busy || r.killed || (!r.free_left && r.tickets < 1) || r.party.length === 0} onClick={go}>
           {r.killed ? '이번 주 보스 처치 완료' : r.free_left ? '도전하기 (오늘 무료 1회)' : `도전하기 (도전권 1장 · ${r.tickets}장 보유)`}
         </button>

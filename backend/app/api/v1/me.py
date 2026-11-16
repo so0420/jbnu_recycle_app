@@ -1,15 +1,16 @@
 from datetime import timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import auth
 from app.core.config import settings
 from app.database import get_db
-from app.models import ClassifyLog, Region, User, Verification
+from app.models import BagItem, ClassifyLog, Region, RegionEvent, User, Verification
+from app.services import locks
 from app.services.clock import now
 from app.services.game import actions, data, economy, region
 
@@ -62,6 +63,7 @@ class RegionIn(BaseModel):
 
 @router.patch("/region")
 async def change_region(body: RegionIn, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    user = await locks.lock_user(db, user)
     r = await db.get(Region, body.region_code)
     if r is None:
         raise HTTPException(400, "동네를 다시 골라 주세요")
@@ -82,11 +84,16 @@ class PasswordIn(BaseModel):
 
 
 @router.post("/password")
-async def change_password(body: PasswordIn, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+async def change_password(body: PasswordIn, response: Response, user: User = Depends(auth.current_user),
+                          db: AsyncSession = Depends(get_db)):
     if not auth.verify_password(body.current, user.password_hash):
         raise HTTPException(400, "지금 비밀번호가 맞지 않아요")
+    if not auth.password_ok(body.new):
+        raise HTTPException(400, auth.PASSWORD_RULE)
     user.password_hash = auth.hash_password(body.new)
+    user.token_version = (user.token_version or 0) + 1      # 다른 기기의 세션은 끊고
     await db.commit()
+    auth.issue(response, user)                              # 이 기기는 새 세션으로 유지
     return {"ok": True}
 
 
@@ -104,21 +111,25 @@ class DeleteIn(BaseModel):
 
 @router.post("/delete")
 async def delete_account(body: DeleteIn, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
-    """회원 탈퇴: 사진 파일 즉시 삭제, 위치 기록 제거, 계정 비식별화."""
+    """회원 탈퇴: 사진 파일 삭제, 위치 기록 제거, 계정·닉네임 비식별화."""
     if not auth.verify_password(body.password, user.password_hash):
         raise HTTPException(400, "비밀번호가 맞지 않아요")
+    user = await locks.lock_user(db, user)
     paths = [p for (p,) in (await db.execute(select(ClassifyLog.photo_path).where(ClassifyLog.user_id == user.id)))]
     paths += [p for (p,) in (await db.execute(select(Verification.photo_path).where(Verification.user_id == user.id)))]
-    for p in paths:
-        if p:
-            Path(settings.UPLOAD_DIR, p).unlink(missing_ok=True)
     await db.execute(update(ClassifyLog).where(ClassifyLog.user_id == user.id).values(photo_path=""))
     await db.execute(update(Verification).where(Verification.user_id == user.id)
                      .values(photo_path="", lat=0, lng=0, accuracy=0))
+    await db.execute(update(RegionEvent).where(RegionEvent.user_id == user.id).values(nickname=None))
+    await db.execute(delete(BagItem).where(BagItem.user_id == user.id))
     user.deleted_at = now()
-    user.login_id = f"deleted_{user.id}"
-    user.nickname = f"탈퇴{user.id}"
+    user.login_id = f"#deleted:{user.id}"          # 가입 규칙상 만들 수 없는 값
+    user.nickname = f"#탈퇴{user.id}"
     user.password_hash = "!"
+    user.token_version = (user.token_version or 0) + 1
     user.last_lat = user.last_lng = None
     await db.commit()
+    for p in paths:                                  # 커밋이 성공한 뒤에 파일을 지운다
+        if p:
+            Path(settings.UPLOAD_DIR, p).unlink(missing_ok=True)
     return {"ok": True}

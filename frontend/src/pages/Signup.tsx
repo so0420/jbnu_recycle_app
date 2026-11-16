@@ -1,24 +1,22 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { get, send } from '../lib/api';
+import { send } from '../lib/api';
+import { Modal } from '../components/common';
+import { LocationTerms, Privacy, Terms } from './Legal';
+import RegionPicker from '../components/RegionPicker';
 import { errMsg, useStore } from '../lib/store';
-
-interface RegionRow { code: string; name: string; gu: string; zone: string | null }
 
 export default function Signup() {
   const { refresh } = useStore();
   const nav = useNavigate();
-  const [regions, setRegions] = useState<RegionRow[]>([]);
   const [f, setF] = useState({ login_id: '', password: '', password2: '', nickname: '', region_code: '' });
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeAge, setAgreeAge] = useState(false);
+  const [agreeLoc, setAgreeLoc] = useState(false);
+  const [doc, setDoc] = useState<null | 'terms' | 'privacy' | 'location'>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    get<RegionRow[]>('/regions/list').then(setRegions).catch(() => setRegions([]));
-  }, []);
 
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
@@ -26,12 +24,12 @@ export default function Signup() {
     e.preventDefault();
     setErr('');
     if (f.password !== f.password2) return setErr('비밀번호가 서로 달라요');
-    if (!agreeTerms || !agreePrivacy || !agreeAge) return setErr('필수 항목에 모두 동의해 주세요');
+    if (!agreeTerms || !agreePrivacy || !agreeAge || !agreeLoc) return setErr('필수 항목에 모두 동의해 주세요');
     setBusy(true);
     try {
       await send('/auth/signup', 'POST', {
         login_id: f.login_id, password: f.password, nickname: f.nickname, region_code: f.region_code || null,
-        agree_terms: agreeTerms, agree_privacy: agreePrivacy,
+        agree_terms: agreeTerms, agree_privacy: agreePrivacy, agree_age: agreeAge, agree_location: agreeLoc,
       });
       await refresh();
       nav('/starter', { replace: true });
@@ -41,8 +39,6 @@ export default function Signup() {
       setBusy(false);
     }
   }
-
-  const byGu = regions.reduce<Record<string, RegionRow[]>>((a, r) => ((a[r.gu] ||= []).push(r), a), {});
 
   return (
     <div className="auth-wrap">
@@ -65,25 +61,27 @@ export default function Signup() {
           <input id="su-nick" value={f.nickname} onChange={set('nickname')} placeholder="2~12자" required minLength={2} maxLength={12} />
         </div>
         <div className="field">
-          <label htmlFor="su-region">내 동네 (첫 배출 인증 위치로 확정돼요)</label>
-          <select id="su-region" value={f.region_code} onChange={set('region_code')}>
-            <option value="">나중에 정할게요</option>
-            {Object.entries(byGu).map(([gu, rs]) => (
-              <optgroup key={gu} label={gu}>
-                {rs.map((r) => <option key={r.code} value={r.code}>{r.name}</option>)}
-              </optgroup>
-            ))}
-          </select>
+          <label htmlFor="su-sido">내 동네 (첫 배출 인증 위치로 확정돼요 · 나중에 정해도 돼요)</label>
+          <RegionPicker idPrefix="su" value={f.region_code} onChange={(code) => setF({ ...f, region_code: code })} />
         </div>
         <div className="col" style={{ gap: 6 }}>
           <label className="check"><input type="checkbox" checked={agreeAge} onChange={(e) => setAgreeAge(e.target.checked)} /> <span>(필수) 만 14세 이상입니다</span></label>
-          <label className="check"><input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} /> <span>(필수) <Link to="/terms" target="_blank">이용약관</Link>에 동의합니다</span></label>
-          <label className="check"><input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} /> <span>(필수) <Link to="/privacy" target="_blank">개인정보 수집·이용</Link>에 동의합니다 (사진·위치, 애매한 사진의 국외 판정 포함)</span></label>
+          <label className="check"><input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} /> <span>(필수) 이용약관에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('terms')}>보기</button></span></label>
+          <label className="check"><input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} /> <span>(필수) 개인정보 수집·이용과 국외 이전(사진 판정·지도·글꼴)에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('privacy')}>보기</button></span></label>
+          <label className="check"><input type="checkbox" checked={agreeLoc} onChange={(e) => setAgreeLoc(e.target.checked)} /> <span>(필수) 위치기반서비스 이용약관에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('location')}>보기</button></span></label>
         </div>
         {err && <p className="err">{err}</p>}
         <button className="btn block" disabled={busy}>{busy ? '가입 중…' : '가입하기'}</button>
       </form>
       <Link className="center small" to="/login">이미 계정이 있어요</Link>
+      {doc && (
+        <Modal onClose={() => setDoc(null)}>
+          {doc === 'terms' && <Terms embedded />}
+          {doc === 'privacy' && <Privacy embedded />}
+          {doc === 'location' && <LocationTerms embedded />}
+          <button className="btn block" onClick={() => setDoc(null)}>닫기</button>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -35,6 +35,13 @@
         </provider>
     </application>
 
+    <!-- Android 11+: 카메라 앱을 호출하려면 선언이 필요 (없으면 사진 선택 창만 열림) -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

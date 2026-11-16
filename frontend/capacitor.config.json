@@ -5,10 +5,15 @@
   "server": {
     "url": "https://recycle.so4.kr",
     "androidScheme": "https",
-    "allowNavigation": ["recycle.so4.kr", "*.tile.openstreetmap.org", "tile.openstreetmap.org"],
+    "allowNavigation": [
+      "recycle.so4.kr",
+      "*.tile.openstreetmap.org",
+      "tile.openstreetmap.org"
+    ],
     "errorPath": "offline.html"
   },
   "android": {
-    "backgroundColor": "#E9ECE6"
+    "backgroundColor": "#E9ECE6",
+    "adjustMarginsForEdgeToEdge": "force"
   }
 }

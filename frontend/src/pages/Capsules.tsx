@@ -3,11 +3,15 @@ import { Link } from 'react-router-dom';
 import { Icon, Remon } from '../components/Art';
 import { Modal, PageHead } from '../components/common';
 import { get, send } from '../lib/api';
-import { RARITY_NAMES, TYPE_NAMES } from '../lib/labels';
+import { MAT_NAMES, RARITY_NAMES, TYPE_NAMES } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
 
 interface Cap { id: number; type: string; source: string }
-interface Opened { name: string; rarity: string; shiny: boolean; duplicate: boolean; stars: number; art: string; type: string; monster_id: number }
+interface Opened {
+  name: string; rarity: string; shiny: boolean; duplicate: boolean; stars: number; art: string; type: string; monster_id: number;
+  overflow?: { material: string; amount: number } | null;
+  legend?: { monster_id: number; name: string; art: string };
+}
 
 const SOURCE: Record<string, string> = { verify: '배출 인증', weekly: '주간 미션', raid_kill: '레이드 처치' };
 
@@ -73,7 +77,19 @@ export default function Capsules() {
                   {result.shiny && <span className="chip volt">반짝이!</span>}
                 </div>
                 <h2 className="center">{result.name}</h2>
-                <p className="small muted center">{result.duplicate ? `이미 있는 리몬이라 별이 올랐어요 (★${result.stars})` : '새 리몬을 만났어요! 도감에 기록했어요'}</p>
+                <p className="small muted center">
+                  {!result.duplicate
+                    ? '새 리몬을 만났어요! 도감에 기록했어요'
+                    : result.overflow
+                      ? `별이 가득 차서 ${MAT_NAMES[result.overflow.material]} ${result.overflow.amount}개로 바뀌었어요`
+                      : `이미 있는 리몬이라 별이 올랐어요 (★${result.stars})`}
+                </p>
+                {result.legend && (
+                  <div className="col center" style={{ alignItems: 'center' }}>
+                    <div className="shine"><Remon art={result.legend.art} mood="happy" size={140} /></div>
+                    <b>10종을 모두 모아 전설의 리몬 「{result.legend.name}」이 찾아왔어요!</b>
+                  </div>
+                )}
               </div>
               <div className="row" style={{ gap: 8 }}>
                 <Link className="btn ghost grow" to={`/monsters/${result.monster_id}`}>보러 가기</Link>

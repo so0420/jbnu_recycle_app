@@ -31,7 +31,7 @@ bosses:
     desc: "3라운드마다 약점 타입이 바뀐다. 여러 타입을 골고루 키운 파티가 유리하다."
   microplastic:
     name: 미세플라스틱 떼
-    weak: vinyl
+    weak: [vinyl, glass]
     atk: 18
     def: 20
     spd: 50

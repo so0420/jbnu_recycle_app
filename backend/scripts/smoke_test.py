@@ -38,11 +38,11 @@ def show(name, r):
 def main():
     c = httpx.Client(base_url=BASE, timeout=120)
     show("health", c.get("/health"))
-    regions = c.get("/api/v1/regions/list").json()
+    regions = c.get("/api/v1/regions/list", params={"sigungu_code": "52113"}).json()
     code = next(r["code"] for r in regions if r["name"] == "덕진동")
     lid = f"smoke_{uuid.uuid4().hex[:6]}"
     show("signup", c.post("/api/v1/auth/signup", json={"login_id": lid, "password": "test1234", "nickname": lid[-8:],
-                                                        "region_code": code, "agree_terms": True, "agree_privacy": True}))
+                                                        "region_code": code, "agree_terms": True, "agree_privacy": True, "agree_age": True, "agree_location": True}))
     show("me", c.get("/api/v1/me"))
     show("starter", c.post("/api/v1/monsters/starter", json={"species": "candol"}))
     show("scan", c.post("/api/v1/scan", files={"photo": ("a.jpg", jpeg(), "image/jpeg")}))

@@ -37,12 +37,37 @@ async def place(place_id: int, db: AsyncSession = Depends(get_db)):
     return place_view(p)
 
 
+@router.get("/regions/sido")
+async def sido_list(db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(select(Region.sido).distinct().order_by(Region.sido))).scalars()
+    return [s for s in rows if s]
+
+
+@router.get("/regions/sigungu")
+async def sigungu_list(sido: str, db: AsyncSession = Depends(get_db)):
+    q = (select(Region.sigungu_code, Region.gu).where(Region.sido == sido).distinct().order_by(Region.gu))
+    return [{"code": c, "name": n} for c, n in (await db.execute(q)).all()]
+
+
 @router.get("/regions/list")
-async def regions_list(db: AsyncSession = Depends(get_db)):
+async def regions_list(sigungu_code: str | None = None, sido: str | None = None, db: AsyncSession = Depends(get_db)):
+    """행정동 목록. 시군구 또는 시도를 지정해야 한다 (전국 약 3,500개)."""
+    if not sigungu_code and not sido:
+        raise HTTPException(400, "시·도 또는 시·군·구를 골라 주세요")
     zones = {z.id: z.name for z in (await db.execute(select(Zone))).scalars()}
-    rs = (await db.execute(select(Region).order_by(Region.gu, Region.name))).scalars()
-    return [{"code": r.code, "name": r.name, "gu": r.gu, "population": r.population, "zone": zones.get(r.zone_id),
-             "center": [r.center_lat, r.center_lng], "dump_weekdays": r.dump_weekdays} for r in rs]
+    q = select(Region).order_by(Region.gu, Region.name)
+    q = q.where(Region.sigungu_code == sigungu_code) if sigungu_code else q.where(Region.sido == sido)
+    return [{"code": r.code, "name": r.name, "gu": r.gu, "sido": r.sido, "sigungu_code": r.sigungu_code,
+             "population": r.population, "zone": zones.get(r.zone_id), "center": [r.center_lat, r.center_lng],
+             "dump_weekdays": r.dump_weekdays} for r in (await db.execute(q)).scalars()]
+
+
+@router.get("/regions/{code}")
+async def region_one(code: str, db: AsyncSession = Depends(get_db)):
+    r = await db.get(Region, code)
+    if r is None:
+        raise HTTPException(404, "동네를 찾을 수 없어요")
+    return {"code": r.code, "name": r.name, "gu": r.gu, "sido": r.sido, "sigungu_code": r.sigungu_code}
 
 
 @router.get("/guides")

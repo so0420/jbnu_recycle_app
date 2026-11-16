@@ -75,10 +75,11 @@ async def current(db: AsyncSession, unit: str) -> Raid:
     missing = max(0, cfg["min_active"] - len(active))
     est += missing * DEFAULT_ATTEMPT_DAMAGE
     hp = int(max(5000, est * ATTEMPTS_PER_USER))
-    raid = Raid(unit=unit, boss=boss, week_start=ws, max_hp=hp, hp=hp)
-    db.add(raid)
-    await db.flush()
-    return raid
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+    await db.execute(mysql_insert(Raid).values(unit=unit, boss=boss, week_start=ws, max_hp=hp, hp=hp)
+                     .prefix_with("IGNORE"))
+    return (await db.execute(select(Raid).where(Raid.unit == unit, Raid.week_start == ws)
+                             .execution_options(populate_existing=True))).scalars().one()
 
 
 async def user_unit(db: AsyncSession, user: User) -> str:
@@ -87,7 +88,7 @@ async def user_unit(db: AsyncSession, user: User) -> str:
     r = await db.get(Region, user.region_code)
     unit = region.unit_of(r)
     if not unit:
-        raise HTTPException(400, "내 동네가 대전 지역에 속하지 않습니다")
+        raise HTTPException(400, "내 동네가 레이드 지역에 속하지 않아요")
     return unit
 
 
@@ -95,6 +96,10 @@ async def attempt(db: AsyncSession, user: User) -> dict:
     economy.require(user, "raid")
     unit = await user_unit(db, user)
     raid = await current(db, unit)
+    await db.flush()
+    # 보스 행을 잠그고 최신 체력·처치 여부를 다시 읽는다 (동시 도전 시 피해 누락·보상 중복 방지)
+    raid = (await db.execute(select(Raid).where(Raid.id == raid.id).with_for_update()
+                             .execution_options(populate_existing=True))).scalars().one()
     if raid.killed_at:
         raise HTTPException(400, "이번 주 보스는 이미 쓰러졌어요. 다음 주 보스를 기다려 주세요")
     party = await party_units(db, user)
@@ -108,14 +113,13 @@ async def attempt(db: AsyncSession, user: User) -> dict:
     else:
         await economy.add_resource(db, user, "tickets", -1, "raid", str(raid.id))
 
-    # 동시 도전 대비: 보스 행을 잠그고 남은 체력을 다시 읽는다
-    raid = (await db.execute(select(Raid).where(Raid.id == raid.id).with_for_update())).scalars().one()
     seed = random.randrange(1, 2 ** 31)
     res = battle.simulate(party, raid.boss, float(raid.hp), seed, boss_hp_ratio=raid.hp / raid.max_hp)
     dmg = min(res.damage, raid.hp)
     raid.hp -= dmg
     db.add(RaidAttempt(raid_id=raid.id, user_id=user.id, damage=dmg, seed=seed,
                        log_json={"units": res.units, "log": res.log}))
+    await db.flush()      # 마지막 일격을 넣은 사람도 처치 보상 대상에 들어가게
     d.raid_count += 1
     cfg = data.economy()["raid"]
     reward = {

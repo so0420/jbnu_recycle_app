@@ -81,11 +81,12 @@ export default function BattlePlayer({ units, log, onDone }: { units: BattleUnit
     setLine('전투 끝!');
   }
 
-  const U = ({ u }: { u: BattleUnit }) => {
+  // 컴포넌트가 아니라 함수로 그린다 (매 틱마다 다시 마운트되지 않게)
+  const renderUnit = (u: BattleUnit) => {
     const dead = (hp[u.id] ?? 0) <= 0;
     const cls = `unit ${u.side} ${u.side === 'enemy' ? 'boss' : ''} ${dead ? 'dead' : ''} ${actor === u.id ? 'act' : ''} ${hit === u.id ? 'hit' : ''}`;
     return (
-      <div className={cls}>
+      <div className={cls} key={u.id}>
         {u.side === 'ally' ? <Remon art={u.art} mood={dead ? 'hurt' : 'normal'} /> : <Boss boss={u.art} hurt={hit === u.id} />}
         <span className="tiny">{u.name}</span>
         <div className="hpbar"><span style={{ width: `${Math.max(0, (hp[u.id] / u.max_hp) * 100)}%` }} /></div>
@@ -106,10 +107,10 @@ export default function BattlePlayer({ units, log, onDone }: { units: BattleUnit
               {floaters.filter((f) => f.unit.startsWith('b')).map((f) => <span key={f.id} className={`floater ${f.kind}`}>{f.text}</span>)}
             </div>
           ) : (
-            enemies.map((u) => <div key={u.id} className="boss-wrap"><U u={u} /></div>)
+            enemies.map((u) => renderUnit(u))
           )}
         </div>
-        <div className="side">{allies.map((u) => <U key={u.id} u={u} />)}</div>
+        <div className="side">{allies.map((u) => renderUnit(u))}</div>
       </div>
       <p className="battle-log" aria-live="polite">{line}</p>
       {i < log.length && <button className="btn ghost sm" onClick={skip}>건너뛰기</button>}
