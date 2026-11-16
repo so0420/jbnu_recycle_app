@@ -301,8 +301,8 @@ button { font: inherit; color: inherit; }
 .pet.sit .pet-body { transform: scale(1.06, 0.9); transition: transform 0.3s; }
 .pet-emote { position: absolute; left: 50%; top: -14px; transform: translateX(-50%); font-size: 18px; font-weight: 700; color: var(--bad);
   animation: emote-up 0.9s ease-out forwards; pointer-events: none; }
-.pet-say { position: absolute; left: 50%; bottom: calc(100% + 16px); transform: translateX(-50%); width: max-content; max-width: 190px;
-  white-space: normal; background: #fff; color: var(--ink); border: 2px solid var(--line); border-radius: 12px; padding: 5px 9px;
+.pet-say { position: absolute; left: 50%; bottom: calc(100% + 16px); transform: translateX(-50%); width: max-content; max-width: 210px;
+  white-space: normal; word-break: keep-all; overflow-wrap: break-word; background: #fff; color: var(--ink); border: 2px solid var(--line); border-radius: 12px; padding: 5px 9px;
   font-size: 12.5px; line-height: 1.35; font-family: var(--body); box-shadow: 0 2px 0 var(--line); z-index: 200; pointer-events: none;
   animation: say-pop 0.18s ease-out; }
 .pet-say::after { content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 7px solid transparent;

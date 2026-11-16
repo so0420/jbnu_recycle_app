@@ -6,7 +6,8 @@ import type { Monster } from '../lib/types';
 type Mode = 'idle' | 'walk' | 'hop' | 'happy' | 'sit';
 interface Pet { x: number; y: number; flip: boolean; mode: Mode; dur: number; say: string | null; emote: string | null }
 
-const X_MIN = 10, X_MAX = 90, Y_MIN = 72, Y_MAX = 96;
+// 발 위치가 가운데 화분(정원 식물)의 밑동보다 앞쪽이어야 겹쳐 보이지 않는다
+const X_MIN = 10, X_MAX = 90, Y_MIN = 80, Y_MAX = 95;
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -26,8 +27,8 @@ export default function GardenPets({ party, dim, lines }: { party: Monster[]; di
     const n = party.length;
     // 처음 자리: 가로로 고르게 흩어 놓는다
     setPets(party.map((_, i) => ({
-      x: n === 1 ? 50 : X_MIN + 10 + ((X_MAX - X_MIN - 20) * i) / Math.max(1, n - 1) + rand(-4, 4),
-      y: rand(Y_MIN + 6, Y_MAX - 4), flip: Math.random() < 0.5, mode: 'idle', dur: 0, say: null, emote: null,
+      x: n === 1 ? pick([28, 72]) + rand(-5, 5) : X_MIN + 10 + ((X_MAX - X_MIN - 20) * i) / Math.max(1, n - 1) + rand(-4, 4),
+      y: rand(Y_MIN + 3, Y_MAX - 3), flip: Math.random() < 0.5, mode: 'idle', dur: 0, say: null, emote: null,
     })));
     busyUntil.current = party.map(() => 0);
     if (reduceMotion()) return;
@@ -43,19 +44,19 @@ export default function GardenPets({ party, dim, lines }: { party: Monster[]; di
         const r = Math.random();
         let next: Pet;
         let wait: number;
-        if (r < 0.55) {                       // 걷기
+        if (r < 0.62) {                       // 걷기
           const x = Math.min(X_MAX, Math.max(X_MIN, p.x + rand(-28, 28)));
-          const y = Math.min(Y_MAX, Math.max(Y_MIN, p.y + rand(-8, 8)));
-          const dist = Math.hypot(x - p.x, (y - p.y) * 1.8);
+          const y = Math.min(Y_MAX, Math.max(Y_MIN, p.y + rand(-6, 6)));
+          const dist = Math.hypot(x - p.x, (y - p.y) * 2.5);
           const dur = Math.max(700, (dist / speed) * 1000);
           next = { ...p, x, y, flip: x < p.x, mode: 'walk', dur, emote: null };
           wait = dur;
           later(() => update(i, { mode: 'idle' }), dur);
-        } else if (r < 0.7 && !dim) {         // 제자리 폴짝
+        } else if (r < 0.75 && !dim) {         // 제자리 폴짝
           next = { ...p, mode: 'hop', emote: pick(['♪', '!', '✨']) };
           wait = 900;
           later(() => update(i, { mode: 'idle', emote: null }), 900);
-        } else if (r < 0.8) {                 // 잠깐 앉아 쉬기
+        } else if (r < 0.84) {                 // 잠깐 앉아 쉬기
           next = { ...p, mode: 'sit', emote: dim ? '…' : null };
           wait = rand(2500, 4500);
         } else {                              // 두리번
@@ -63,7 +64,7 @@ export default function GardenPets({ party, dim, lines }: { party: Monster[]; di
           wait = rand(800, 1600);
         }
         update(i, next);
-        schedule(i, wait + rand(900, 2600));
+        schedule(i, wait + rand(500, 1800));
       }
     };
     party.forEach((_, i) => schedule(i, rand(400, 2200)));
@@ -102,7 +103,7 @@ export default function GardenPets({ party, dim, lines }: { party: Monster[]; di
                 <Remon art={m.art} shiny={m.is_shiny} mood={p.mode === 'happy' ? 'happy' : dim ? 'hurt' : 'normal'} />
               </span>
             </span>
-            {p.emote && <span className="pet-emote">{p.emote}</span>}
+            {p.emote && !p.say && <span className="pet-emote">{p.emote}</span>}
             {p.say && <span className={`pet-say ${p.x < 32 ? 'l' : p.x > 68 ? 'r' : ''}`}>{p.say}</span>}
           </button>
         );
