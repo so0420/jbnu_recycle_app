@@ -21,6 +21,7 @@ export interface Me {
     code: string;
     name: string;
     gu: string;
+    sido: string;
     confirmed: boolean;
     unit: string | null;
     unit_name: string | null;

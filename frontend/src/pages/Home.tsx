@@ -42,7 +42,9 @@ export default function Home() {
       <div className="card">
         <div className="row between">
           <div className="col" style={{ gap: 2 }}>
-            <span className="tiny muted">{reg ? `${reg.gu} · ${reg.unit_name ?? ''}` : '내 동네'}</span>
+            <span className="tiny muted">
+              {reg ? (reg.unit_name && reg.unit_name !== reg.gu ? `${reg.gu} · ${reg.unit_name}` : `${reg.sido} ${reg.gu}`) : '내 동네'}
+            </span>
             <h3>{reg ? reg.name : '동네를 정해 주세요'}</h3>
           </div>
           {reg?.stage && (
