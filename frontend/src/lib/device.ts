@@ -28,6 +28,33 @@ export interface Fix {
   accuracy: number;
 }
 
+// 이번 실행 동안의 마지막 위치 (앱을 닫으면 사라짐, 서버로 보내지 않음): 지도를 다시 열 때 바로 그 자리에서 시작
+const LAST_FIX = 'rc_last_fix';
+export function lastFix(): Fix | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(LAST_FIX) ?? 'null');
+    return v && typeof v.lat === 'number' ? v : null;
+  } catch {
+    return null;
+  }
+}
+function remember(f: Fix): Fix {
+  try { sessionStorage.setItem(LAST_FIX, JSON.stringify(f)); } catch { /* 저장 못 해도 그만 */ }
+  return f;
+}
+
+/** 빠른 대략 위치: 기기에 남아 있는 최근 위치(5분 이내)나 와이파이·기지국 위치를 바로 받는다. */
+export function getQuickPosition(timeoutMs = 2500): Promise<Fix> {
+  return new Promise((resolve, reject) => {
+    if (!('geolocation' in navigator)) return reject(new Error('위치 없음'));
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve(remember({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy })),
+      () => reject(new Error('위치 없음')),
+      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 300000 },
+    );
+  });
+}
+
 export function getPosition(timeoutMs = 15000): Promise<Fix> {
   return new Promise((resolve, reject) => {
     if (!('geolocation' in navigator)) {
@@ -35,7 +62,7 @@ export function getPosition(timeoutMs = 15000): Promise<Fix> {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+      (p) => resolve(remember({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy })),
       (e) => {
         if (e.code === e.PERMISSION_DENIED) reject(new Error('위치 권한을 허용해 주세요 (설정 → 앱 → 권한)'));
         else if (e.code === e.TIMEOUT) reject(new Error('위치를 찾는 데 시간이 걸려요. 밖으로 나와 다시 시도해 주세요'));

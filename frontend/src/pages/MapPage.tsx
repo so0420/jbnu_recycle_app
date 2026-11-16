@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHead } from '../components/common';
 import { get } from '../lib/api';
-import { getPosition } from '../lib/device';
+import { getPosition, getQuickPosition, lastFix } from '../lib/device';
 import { errMsg, useStore } from '../lib/store';
 import type { Place } from '../lib/types';
 
@@ -148,9 +148,10 @@ export default function MapPage() {
 
   useEffect(() => {
     if (!box.current || map.current) return;
+    const start = lastFix();
     // 위치를 못 받으면 내 동네 중심, 그것도 없으면 시범 지역(전주)
     const m = L.map(box.current, { zoomControl: false, attributionControl: true })
-      .setView(home && home[0] ? home : JEONJU, 15);
+      .setView(start ? [start.lat, start.lng] : home && home[0] ? home : JEONJU, start ? 16 : 15);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '© OpenStreetMap',
     }).addTo(m);
@@ -160,12 +161,25 @@ export default function MapPage() {
     map.current = m;
     let t: ReturnType<typeof setTimeout>;
     m.on('moveend', () => { clearTimeout(t); t = setTimeout(load, 250); });
-    getPosition(8000)
-      .then((f) => {
-        m.setView([f.lat, f.lng], 16);
-        showMe(f.lat, f.lng);
-      })
-      .catch(() => void load());
+    // 사용자가 지도를 만지기 시작하면, 늦게 도착한 위치로 지도를 옮기지 않는다 (파란 점만 갱신)
+    let touched = false;
+    const touch = () => { touched = true; };
+    const el = m.getContainer();
+    el.addEventListener('pointerdown', touch);
+    el.addEventListener('wheel', touch, { passive: true });
+    el.addEventListener('touchstart', touch, { passive: true });
+    let centered = !!start;
+    if (start) showMe(start.lat, start.lng);
+    const arrive = (f: { lat: number; lng: number }) => {
+      if (!map.current) return;
+      showMe(f.lat, f.lng);
+      if (!touched) {
+        m.setView([f.lat, f.lng], centered ? m.getZoom() : 16);
+        centered = true;
+      }
+    };
+    getQuickPosition().then(arrive).catch(() => {});     // 대략 위치로 먼저 빠르게
+    getPosition(10000).then(arrive).catch(() => { if (!centered) void load(); });   // 그다음 정확한 위치
     return () => { m.remove(); map.current = null; meDot.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
