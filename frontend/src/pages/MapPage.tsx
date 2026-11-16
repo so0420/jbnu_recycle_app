@@ -56,10 +56,16 @@ export default function MapPage() {
   async function goToMe() {
     if (locating) return;
     setLocating(true);
-    try {
-      const f = await getPosition(10000);
+    const go = (f: { lat: number; lng: number }) => {
       showMe(f.lat, f.lng);
       map.current?.setView([f.lat, f.lng], Math.max(16, map.current.getZoom()));
+    };
+    // 이번 실행의 마지막 위치 → 기기의 대략 위치 순으로 바로 옮기고, 정확한 위치가 오면 한 번 더 맞춘다
+    const last = lastFix();
+    if (last) go(last);
+    getQuickPosition(1500).then(go).catch(() => {});
+    try {
+      go(await getPosition(10000));
       setLoadErr('');
     } catch (e) {
       setLoadErr(errMsg(e));
@@ -163,18 +169,23 @@ export default function MapPage() {
     m.on('moveend', () => { clearTimeout(t); t = setTimeout(load, 250); });
     // 사용자가 지도를 만지기 시작하면, 늦게 도착한 위치로 지도를 옮기지 않는다 (파란 점만 갱신)
     let touched = false;
-    const touch = () => { touched = true; };
+    let auto = false;                       // 앱이 스스로 옮기는 중인지
+    const touch = () => { if (!auto) touched = true; };
     const el = m.getContainer();
-    el.addEventListener('pointerdown', touch);
-    el.addEventListener('wheel', touch, { passive: true });
-    el.addEventListener('touchstart', touch, { passive: true });
+    // 지도 안쪽이 이벤트를 먼저 가로채므로 캡처 단계에서 받는다
+    el.addEventListener('pointerdown', touch, true);
+    el.addEventListener('touchstart', touch, { capture: true, passive: true });
+    el.addEventListener('wheel', touch, { capture: true, passive: true });
+    m.on('dragstart zoomstart', touch);
     let centered = !!start;
     if (start) showMe(start.lat, start.lng);
     const arrive = (f: { lat: number; lng: number }) => {
       if (!map.current) return;
       showMe(f.lat, f.lng);
       if (!touched) {
+        auto = true;
         m.setView([f.lat, f.lng], centered ? m.getZoom() : 16);
+        auto = false;
         centered = true;
       }
     };
