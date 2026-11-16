@@ -142,7 +142,7 @@ async def main(data_dir: Path, force: bool) -> None:
 async def _upsert_places(db, batch: list[dict]) -> int:
     stmt = mysql_insert(Place).values(batch)
     cols = [c for c in batch[0] if c not in ("source", "source_id")]
-    await db.execute(stmt.on_duplicate_key_update({c: getattr(stmt.inserted, c) for c in cols}))
+    await db.execute(stmt.on_duplicate_key_update({c: stmt.inserted[c] for c in cols}   # .items 같은 이름이 메서드와 겹치지 않게 [] 로))
     return len(batch)
 
 

@@ -25,7 +25,7 @@ async def main():
         lid = f"race_{uuid.uuid4().hex[:6]}"
         r = await c.post("/api/v1/auth/signup", json={"login_id": lid, "password": "test1234", "nickname": lid[-8:],
                                                       "region_code": code, "agree_terms": True, "agree_privacy": True,
-                                                      "agree_age": True, "agree_location": True})
+                                                      "agree_age": True, "agree_location": True, "agree_overseas": True})
         print("signup", r.status_code, r.text[:80])
         await c.post("/api/v1/monsters/starter", json={"species": "candol"})
 
