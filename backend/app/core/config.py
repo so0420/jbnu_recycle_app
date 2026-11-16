@@ -91,7 +91,7 @@ class Settings(BaseSettings):
     HSTS_MAX_AGE: int = 31536000  # 1년
     CSP_POLICY: str = (
         "default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
+        "style-src 'self' 'unsafe-inline'; font-src 'self'; "
         "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     )
 
@@ -105,7 +105,6 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change-me"   # local 이 아니면 validator 가 거절
     JWT_EXPIRE_DAYS: int = 30
     COOKIE_SECURE: bool = True
-    ADMIN_LOGIN_IDS: list[str] = Field(default_factory=list)
 
     # ---- AI ----
     SYSTEM_ONE_URL: str = "http://127.0.0.1:11001/v1/systemone"
@@ -126,7 +125,6 @@ class Settings(BaseSettings):
     VERIFY_MAX_ACCURACY_M: float = 100.0
 
     @field_validator(
-        "ADMIN_LOGIN_IDS",
         "CORS_ALLOW_ORIGINS",
         "CORS_ALLOW_METHODS",
         "CORS_ALLOW_HEADERS",

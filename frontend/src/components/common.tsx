@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Art';
 import { MAT_NAMES } from '../lib/labels';
@@ -29,7 +29,24 @@ export function Mat({ k, n }: { k: string; n: number }) {
   );
 }
 
+// 열린 창 목록: 안드로이드 뒤로 가기는 화면을 넘기기 전에 맨 위 창부터 닫는다
+const modalStack: { close?: () => void }[] = [];
+
+export function closeTopModal(): boolean {
+  const top = modalStack[modalStack.length - 1];
+  if (!top) return false;
+  top.close?.();
+  return true;
+}
+
 export function Modal({ children, onClose }: { children: ReactNode; onClose?: () => void }) {
+  const entry = useRef<{ close?: () => void }>({});
+  entry.current.close = onClose;
+  useEffect(() => {
+    const e = entry.current;
+    modalStack.push(e);
+    return () => { const i = modalStack.indexOf(e); if (i >= 0) modalStack.splice(i, 1); };
+  }, []);
   return (
     <div className="modal-bg" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -42,4 +59,13 @@ export function Modal({ children, onClose }: { children: ReactNode; onClose?: ()
 export function Stars({ n }: { n: number }) {
   if (!n) return null;
   return <span className="stars" aria-label={`별 ${n}개`}>{'★'.repeat(n)}</span>;
+}
+
+export function LoadError({ msg, onRetry }: { msg: string; onRetry: () => void }) {
+  return (
+    <div className="empty">
+      <p>{msg}</p>
+      <button className="btn" style={{ marginTop: 12 }} onClick={onRetry}>다시 시도</button>
+    </div>
+  );
 }

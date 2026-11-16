@@ -135,6 +135,12 @@ def setup_uvicorn_logging():
     access.propagate = False
     access.disabled = True
 
+    # 요청 한도 초과 경고에는 IP 가 들어가므로 따로 남기지 않는다 (응답은 그대로 429)
+    sl = logging.getLogger("slowapi")
+    sl.handlers = []
+    sl.propagate = False
+    sl.setLevel(logging.ERROR)
+
 
 # 기본 로거 인스턴스
 logger = get_logger()

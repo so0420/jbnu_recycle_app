@@ -13,9 +13,35 @@ from app.models import Region, User
 from app.services.clock import now
 
 router = APIRouter()
-POLICY_VERSION = "2026-11-16"
+POLICY_VERSION = "2026-11-17"
 
 ID_RE = re.compile(r"^[a-z0-9_]{4,20}$")
+RESERVED_NICK = ("관리자", "운영자", "admin", "리사이클")
+
+# 아이디별 로그인 실패 (프로세스 하나로 돌므로 메모리로 충분): 10분에 10번 틀리면 잠시 막는다
+_FAILS: dict[str, list[float]] = {}
+FAIL_WINDOW, FAIL_MAX = 600.0, 10
+
+
+def _fails(lid: str) -> list[float]:
+    import time
+    t = time.monotonic()
+    xs = [x for x in _FAILS.get(lid, []) if t - x < FAIL_WINDOW]
+    if xs:
+        _FAILS[lid] = xs
+    else:
+        _FAILS.pop(lid, None)
+    return xs
+
+
+def nickname_ok(nick: str) -> str | None:
+    if not 2 <= len(nick) <= 12:
+        return "닉네임은 2~12자로 만들어 주세요"
+    if any(not ch.isprintable() for ch in nick) or nick.startswith("#"):
+        return "닉네임에 쓸 수 없는 글자가 있어요"
+    if nick.lower() in RESERVED_NICK:
+        return "쓸 수 없는 닉네임이에요"
+    return None
 
 
 class SignupIn(BaseModel):
@@ -27,6 +53,7 @@ class SignupIn(BaseModel):
     agree_privacy: bool
     agree_age: bool
     agree_location: bool
+    agree_overseas: bool = False
 
 
 class LoginIn(BaseModel):
@@ -35,18 +62,21 @@ class LoginIn(BaseModel):
 
 
 @router.post("/signup")
-@limiter.limit("10/hour")
+@limiter.limit("60/hour")      # 같은 와이파이(강의실)에서 여럿이 가입할 수 있게 넉넉히
 async def signup(request: Request, body: SignupIn, response: Response, db: AsyncSession = Depends(get_db)):
     lid = body.login_id.strip().lower()
     if not ID_RE.match(lid):
         raise HTTPException(400, "아이디는 영문 소문자·숫자·밑줄 4~20자로 만들어 주세요")
-    if not (body.agree_terms and body.agree_privacy and body.agree_location):
-        raise HTTPException(400, "필수 약관(이용약관, 개인정보, 위치정보)에 모두 동의해 주세요")
+    if not (body.agree_terms and body.agree_privacy and body.agree_location and body.agree_overseas):
+        raise HTTPException(400, "필수 항목(이용약관, 개인정보 수집·이용, 국외 이전, 위치정보)에 모두 동의해 주세요")
     if not body.agree_age:
         raise HTTPException(400, "만 14세 이상만 가입할 수 있어요")
     if not auth.password_ok(body.password):
         raise HTTPException(400, auth.PASSWORD_RULE)
     nick = body.nickname.strip()
+    bad = nickname_ok(nick)
+    if bad:
+        raise HTTPException(400, bad)
     if (await db.execute(select(User.id).where(User.login_id == lid))).first():
         raise HTTPException(409, "이미 쓰고 있는 아이디예요")
     if (await db.execute(select(User.id).where(User.nickname == nick))).first():
@@ -57,8 +87,9 @@ async def signup(request: Request, body: SignupIn, response: Response, db: Async
         if region is None:
             raise HTTPException(400, "동네를 다시 골라 주세요")
     t = now()
-    user = User(login_id=lid, password_hash=auth.hash_password(body.password), nickname=nick, role="user",
-                agreed_terms_at=t, age_confirmed_at=t, agreed_location_at=t, policy_version=POLICY_VERSION,
+    user = User(login_id=lid, password_hash=await auth.hash_password_async(body.password), nickname=nick,
+                role="user", agreed_terms_at=t, age_confirmed_at=t, agreed_location_at=t, agreed_overseas_at=t,
+                policy_version=POLICY_VERSION,
                 token_version=0,
                 region_code=region.code if region else None, xp=0, level=1, coins=0, tickets=0, crystals=0,
                 bag_capacity=6, pity=0, starter_done=False)
@@ -73,11 +104,18 @@ async def signup(request: Request, body: SignupIn, response: Response, db: Async
 
 
 @router.post("/login")
-@limiter.limit("20/minute")
+@limiter.limit("60/minute")
 async def login(request: Request, body: LoginIn, response: Response, db: AsyncSession = Depends(get_db)):
-    user = (await db.execute(select(User).where(User.login_id == body.login_id.strip().lower()))).scalars().first()
-    if user is None or user.deleted_at is not None or not auth.verify_password(body.password, user.password_hash):
+    import time
+    lid = body.login_id.strip().lower()[:40]
+    if len(_fails(lid)) >= FAIL_MAX:
+        raise HTTPException(429, "비밀번호를 여러 번 틀렸어요. 10분 뒤 다시 시도해 주세요")
+    user = (await db.execute(select(User).where(User.login_id == lid))).scalars().first()
+    stored = user.password_hash if user is not None and user.deleted_at is None else None
+    if not await auth.verify_password_async(body.password, stored):
+        _FAILS.setdefault(lid, []).append(time.monotonic())
         raise HTTPException(401, "아이디 또는 비밀번호가 맞지 않아요")
+    _FAILS.pop(lid, None)
     auth.issue(response, user)
     return {"ok": True}
 

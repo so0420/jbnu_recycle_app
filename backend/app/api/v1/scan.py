@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +15,7 @@ from app.services.game import actions, data, economy
 
 router = APIRouter()
 AI_DAILY_LIMIT = 40          # 스캔 + 인증 판정을 합친 하루 AI 사용 횟수
+AI_BUDGET_S = 70             # Cloudflare(100초)보다 먼저 끝낸다
 
 
 def guide_view(category: str | None, item_label: str | None) -> dict | None:
@@ -53,20 +56,28 @@ async def scan(request: Request, photo: UploadFile = File(...), user: User = Dep
                db: AsyncSession = Depends(get_db)):
     raw = await photo.read()
     try:
-        img = images.open_image(raw)
+        img = await asyncio.to_thread(images.open_image, raw)     # 이미지 처리는 이벤트 루프 밖에서
     except images.BadImage:
         raise HTTPException(400, "사진을 읽을 수 없어요. 다시 찍어 주세요")
     await reserve_ai(db, user)
     # AI 판정 동안에는 DB 잠금·트랜잭션을 잡고 있지 않는다
-    res = await classifier.classify(db, images.to_b64_jpeg(img, settings.AI_IMAGE_EDGE))
-    if res.s1 is None and res.s2 is None:
+    b64 = await asyncio.to_thread(images.to_b64_jpeg, img, settings.AI_IMAGE_EDGE)
+    try:
+        async with asyncio.timeout(AI_BUDGET_S):
+            res = await classifier.classify(db, b64)
+    except TimeoutError:
+        res = None
+    if res is None or (res.s1 is None and res.s2 is None):
         await refund_ai(db, user)
         raise HTTPException(409, "AI가 지금 바빠요. 잠시 뒤 다시 찍어 주세요")
     if res.category is None and not res.candidates:
-        res.candidates = list(data.guides()["categories"])[:6]      # 2차도 확신이 없으면 사용자가 고르게
-    ph = images.phash(img)
+        # 2차도 확신이 없으면 사용자가 고르게: 2차가 짐작한 분류를 앞에, 일반쓰레기까지 전부
+        cats = list(data.guides()["categories"])
+        guess = (res.s2 or {}).get("category")
+        res.candidates = ([guess] if guess in cats else []) + [c for c in cats if c != guess]
+    ph = await asyncio.to_thread(images.phash, img)
     user = await locks.lock_user(db, user)
-    path = images.save(img, "scan")
+    path = await asyncio.to_thread(images.save, img, "scan")
     try:
         log = ClassifyLog(user_id=user.id, photo_path=path, phash=ph, s1_json=res.s1, s2_json=res.s2,
                           category=res.category, item_label=res.item_label, judged_by=res.judged_by,

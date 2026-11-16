@@ -27,6 +27,8 @@ export interface Me {
     unit_name: string | null;
     cleanliness: number | null;
     stage: { key: string; name: string } | null;
+    center: [number, number];
+    next_change_free: boolean;
     dump_weekdays: string;
   };
   today: {
@@ -108,6 +110,8 @@ export interface BattleEvent {
   shield_hit?: number;
   absorbed?: number;
   amount?: number;
+  hp?: number;
+  hps?: Record<string, number>;
 }
 
 export interface BattleUnit {

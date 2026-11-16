@@ -13,6 +13,9 @@ interface Opened {
   legend?: { monster_id: number; name: string; art: string };
 }
 
+interface Rates { rare_rate: number; clean_bonus_rate: number; pity: number; shiny_rate: number; shiny_clean_rate: number; max_stars: number; dup_overflow_materials: number }
+const pct = (x: number) => `${Math.round(x * 1000) / 10}%`;
+
 const SOURCE: Record<string, string> = { verify: '배출 인증', weekly: '주간 미션', raid_kill: '레이드 처치' };
 
 export default function Capsules() {
@@ -21,8 +24,12 @@ export default function Capsules() {
   const [opening, setOpening] = useState<Cap | null>(null);
   const [result, setResult] = useState<Opened | null>(null);
 
-  const load = () => get<Cap[]>('/capsules').then(setCaps);
-  useEffect(() => { void load(); }, []);
+  const [rates, setRates] = useState<Rates | null>(null);
+  const load = () => get<Cap[]>('/capsules').then(setCaps).catch((e) => toast(errMsg(e), 'err'));
+  useEffect(() => {
+    void load();
+    get<Rates>('/capsules/rates').then(setRates).catch(() => {});
+  }, []);
 
   async function open(c: Cap) {
     setOpening(c);
@@ -57,7 +64,19 @@ export default function Capsules() {
           </button>
         ))}
       </div>
-      <p className="tiny muted">희귀가 4번 연속 안 나오면 다음은 희귀 확정이에요. 가방의 물건이 모두 깨끗했다면 희귀 확률이 올라가요.</p>
+      {rates && (
+        <details className="card">
+          <summary><b>캡슐 확률</b></summary>
+          <ul className="small" style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+            <li>일반 {pct(1 - rates.rare_rate)} · 희귀 {pct(rates.rare_rate)}</li>
+            <li>정산한 가방 물건이 모두 깨끗했으면 희귀 +{pct(rates.clean_bonus_rate)}p, 반짝이 {pct(rates.shiny_clean_rate)} (평소 {pct(rates.shiny_rate)})</li>
+            <li>희귀가 {rates.pity - 1}번 연속 안 나오면 {rates.pity}번째는 희귀 확정</li>
+            <li>특수 수거함(폐건전지·의류) 캡슐은 그 타입의 에픽 리몬 확정</li>
+            <li>같은 종류가 나오면 별이 하나 늘고(최대 {rates.max_stars}개), 별이 가득하면 재료 {rates.dup_overflow_materials}개로 바뀌어요</li>
+            <li>일반·희귀 리몬 10종을 모두 모으면 전설의 리몬이 찾아와요</li>
+          </ul>
+        </details>
+      )}
 
       {opening && (
         <Modal onClose={() => result && setOpening(null)}>

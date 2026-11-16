@@ -32,11 +32,18 @@ async def tokens_used_today_fresh(db: AsyncSession | None = None) -> int:
 async def _record(tokens: int) -> None:
     """토큰 사용량은 요청 트랜잭션과 따로, 원자적으로 더한다 (요청이 실패해도 남는다)."""
     from app.database.session import AsyncSessionLocal
-    async with AsyncSessionLocal() as s:
-        stmt = mysql_insert(AiUsage).values(day=today(), provider=PROVIDER, tokens=tokens, calls=1)
-        await s.execute(stmt.on_duplicate_key_update(tokens=AiUsage.tokens + stmt.inserted.tokens,
-                                                     calls=AiUsage.calls + 1))
-        await s.commit()
+    try:
+        async with AsyncSessionLocal() as s:
+            stmt = mysql_insert(AiUsage).values(day=today(), provider=PROVIDER, tokens=tokens, calls=1)
+            await s.execute(stmt.on_duplicate_key_update(tokens=AiUsage.tokens + stmt.inserted.tokens,
+                                                         calls=AiUsage.calls + 1))
+            await s.commit()
+    except Exception as e:      # 기록 실패가 판정 실패가 되지 않게
+        logger.error(f"OpenAI 사용량 기록 실패: {e!r}")
+
+
+# 응답을 못 받았어도 요금이 나갔을 수 있는 경우(시간 초과)에 한도 계산용으로 잡아 두는 토큰 수
+ESTIMATE_TOKENS_ON_TIMEOUT = 3000
 
 
 _client = None
@@ -46,7 +53,7 @@ def client():
     global _client
     if _client is None:
         from openai import AsyncOpenAI
-        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=settings.OPENAI_TIMEOUT, max_retries=1)
+        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=settings.OPENAI_TIMEOUT, max_retries=0)   # 재시도는 사용량이 기록되지 않아 한도 계산이 틀어진다
     return _client
 
 
@@ -68,6 +75,8 @@ async def ask_json(db: AsyncSession, prompt: str, image_b64: str | None, schema:
         )
     except Exception as e:  # 네트워크·모델 오류 모두 2차 실패로 처리
         logger.warning(f"OpenAI 호출 실패: {e!r}")
+        if "Timeout" in type(e).__name__:
+            await _record(ESTIMATE_TOKENS_ON_TIMEOUT)
         raise OpenAIUnavailable(str(e)) from e
     usage = getattr(resp, "usage", None)
     await _record(int(getattr(usage, "total_tokens", 0) or 0))

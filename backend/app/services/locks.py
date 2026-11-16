@@ -7,7 +7,10 @@ populate_existing 으로 이미 세션에 올라온 객체도 새 값으로 덮�
 from sqlalchemy import inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import User
+from app.models import HabitProgress, User, UserDaily, UserMaterial, UserWeekly
+
+# 커밋 뒤에도 세션에 남는 사용자별 카운터 행: 잠금을 얻은 뒤 반드시 DB 값으로 다시 읽는다
+_COUNTERS = (UserDaily, UserWeekly, HabitProgress, UserMaterial)
 
 
 def _uid(user: User | int) -> int:
@@ -25,6 +28,15 @@ async def lock_user(db: AsyncSession, user: User | int) -> User:
         from fastapi import HTTPException
         await db.rollback()
         raise HTTPException(401, "다시 로그인해 주세요")
+    # expire_on_commit=False 라서 앞 단계(예: AI 사용 예약)에서 읽은 행이 옛 값으로 남아 있을 수 있다
+    for obj in [o for o in list(db.identity_map.values()) if isinstance(o, _COUNTERS)]:
+        st = inspect(obj)
+        if st.dict.get("user_id") != u.id or st.deleted or st.detached:
+            continue
+        try:
+            await db.refresh(obj)
+        except Exception:          # 그새 지워진 행
+            db.expunge(obj)
     return u
 
 

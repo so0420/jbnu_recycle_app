@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Icon } from '../components/Art';
 import PhotoPicker from '../components/PhotoPicker';
 import { Mat, PageHead } from '../components/common';
-import { get, upload } from '../lib/api';
+import { ApiError, get, upload } from '../lib/api';
 import { getPosition, shrinkPhoto, uuid, type Fix } from '../lib/device';
 import { MAT_NAMES } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
@@ -43,6 +43,8 @@ export default function Verify() {
   const [locating, setLocating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<VerifyRes | null>(null);
+  // 응답을 못 받은 요청: 같은 요청 키로 다시 보내면 서버가 이미 처리한 결과를 그대로 돌려준다
+  const [pending, setPending] = useState<FormData | null>(null);
 
   const locate = useCallback(async () => {
     setLocErr('');
@@ -60,28 +62,45 @@ export default function Verify() {
 
   useEffect(() => { void locate(); }, [locate]);
 
+  async function submit(fd: FormData) {
+    setBusy(true);
+    setRes(null);
+    try {
+      const r = await upload<VerifyRes>('/verify', fd);
+      setPending(null);
+      setRes(r);
+      if (r.result === 'success') void refresh();
+    } catch (e) {
+      if (e instanceof ApiError && (e.status === 0 || e.status >= 500)) setPending(fd);
+      else setPending(null);
+      toast(errMsg(e), 'err');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onPick(file: File) {
     setBusy(true);
     setRes(null);
+    setPending(null);
+    let fd: FormData;
     try {
       const f = await getPosition().catch(() => fix);
       if (!f) throw new Error('위치를 가져오지 못했어요');
       const blob = await shrinkPhoto(file);
-      const fd = new FormData();
+      fd = new FormData();
       fd.append('photo', blob, 'verify.jpg');
       fd.append('lat', String(f.lat));
       fd.append('lng', String(f.lng));
       fd.append('accuracy', String(Math.round(f.accuracy)));
       fd.append('idempotency_key', uuid());
       if (file.lastModified > 0) fd.append('taken_ms', String(file.lastModified));
-      const r = await upload<VerifyRes>('/verify', fd);
-      setRes(r);
-      if (r.result === 'success') void refresh();
     } catch (e) {
       toast(errMsg(e), 'err');
-    } finally {
       setBusy(false);
+      return;
     }
+    await submit(fd);
   }
 
   const target = near?.places[0];
@@ -116,6 +135,12 @@ export default function Verify() {
         </div>
       )}
 
+      {pending && !busy && !res && (
+        <div className="card">
+          <p className="small">결과를 받지 못했어요. 같은 사진으로 다시 보내면 이미 처리된 인증은 그대로 확인돼요.</p>
+          <button className="btn block" onClick={() => void submit(pending)}>같은 사진으로 다시 보내기</button>
+        </div>
+      )}
       {!res && !busy && (
         <PhotoPicker
           onPick={onPick}
@@ -157,7 +182,7 @@ export default function Verify() {
             {rw.stamp_new && <div className="r"><Icon name="stamp" size={22} />새 수거장 스탬프!</div>}
             {rw.weekly && <div className="r">주간 목표 {rw.weekly.count}/{rw.weekly.goal}{rw.weekly.completed_now ? ' 달성!' : ''}</div>}
             {rw.evolution_ready && rw.evolution_ready.length > 0 && <div className="r"><b>진화 가능: {rw.evolution_ready.map((e) => e.name).join(', ')}</b></div>}
-            {rw.region_suggest && <div className="r small">이 수거장은 {rw.region_suggest.name}이에요. 내 동네를 바꾸려면 내 정보에서 바꿀 수 있어요.</div>}
+            {rw.region_suggest && <div className="r small">이 수거장은 {rw.region_suggest.name}이에요. 내 동네가 맞지 않으면 내 정보에서 바꿔 주세요 (확정 뒤 첫 변경은 바로 할 수 있어요).</div>}
           </div>
           {rw.capsule && <Link className="btn block" to="/capsules">캡슐 열기</Link>}
           <Link className="btn ghost block" to="/">홈으로</Link>

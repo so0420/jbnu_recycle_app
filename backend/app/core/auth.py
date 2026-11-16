@@ -33,6 +33,27 @@ def verify_password(pw: str, stored: str) -> bool:
         return False
 
 
+_DUMMY = None
+
+
+async def hash_password_async(pw: str) -> str:
+    """scrypt 는 CPU 를 오래 쓰므로 이벤트 루프 밖 스레드에서 돌린다."""
+    import asyncio
+    return await asyncio.to_thread(hash_password, pw)
+
+
+async def verify_password_async(pw: str, stored: str | None) -> bool:
+    """없는 아이디여도 같은 시간이 걸리게 가짜 해시와 비교한다."""
+    import asyncio
+    global _DUMMY
+    if not stored or stored == "!":
+        if _DUMMY is None:
+            _DUMMY = await asyncio.to_thread(hash_password, "dummy-password-0")
+        await asyncio.to_thread(verify_password, pw, _DUMMY)
+        return False
+    return await asyncio.to_thread(verify_password, pw, stored)
+
+
 PASSWORD_RULE = "비밀번호는 영문과 숫자를 섞어 8자 이상으로 만들어 주세요"
 
 

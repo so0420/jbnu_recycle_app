@@ -13,11 +13,13 @@ function Exchange() {
   const { me, refresh, toast } = useStore();
   const [src, setSrc] = useState<string>('plastic');
   const [dst, setDst] = useState<string>('glass');
-  const [amount, setAmount] = useState(1);
+  const [amountText, setAmountText] = useState('1');
+  const amount = Math.max(0, Math.min(100, Math.floor(Number(amountText) || 0)));
   const [busy, setBusy] = useState(false);
   if (!me?.unlocks.exchange) return null;
   const cost = src === 'coins' ? amount * 5 : amount * 3;
   async function go() {
+    if (busy || amount < 1) return;
     setBusy(true);
     try {
       const r = await send<{ spent: number; got: number }>('/exchange', 'POST', { src, dst, amount });
@@ -42,9 +44,10 @@ function Exchange() {
         <select aria-label="받을 재료" value={dst} onChange={(e) => setDst(e.target.value)}>
           {BASE.filter((k) => k !== src).map((k) => <option key={k} value={k}>{MAT_NAMES[k]}</option>)}
         </select>
-        <input aria-label="받을 개수" type="number" min={1} max={100} value={amount} style={{ width: 64 }}
-          onChange={(e) => setAmount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} />
-        <button className="btn sm" disabled={busy || src === dst} onClick={go}>바꾸기 ({src === 'coins' ? '코인' : MAT_NAMES[src]} {cost})</button>
+        <input aria-label="받을 개수" type="text" inputMode="numeric" value={amountText} style={{ width: 64 }}
+          onChange={(e) => setAmountText(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+          onBlur={() => setAmountText(String(Math.max(1, amount)))} />
+        <button className="btn sm" disabled={busy || src === dst || amount < 1} onClick={go}>바꾸기 ({src === 'coins' ? '코인' : MAT_NAMES[src]} {cost})</button>
       </div>
     </div>
   );

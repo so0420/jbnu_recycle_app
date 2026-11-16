@@ -69,13 +69,13 @@ region:
   target_restore: 40
   w_min: 0.5
   w_max: 3.0
+  w_min_sigungu: 0.25         # 전국 시군구 모드 (인구 8천~73만)
+  w_max_sigungu: 10.0
   crisis_below: 200
   crisis_restore: 1.5
   raid_kill_restore: 150
 
 raid:
-  hp_per_active_user: 0         # 0 이면 raid.py 의 기본 계산 사용
-  min_active: 3
   reward_coins_per_attempt: 5
   reward_materials_per_attempt: 1
   kill_crystals: 1

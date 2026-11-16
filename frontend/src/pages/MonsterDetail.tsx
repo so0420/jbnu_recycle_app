@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Remon } from '../components/Art';
-import { Mat, Modal, PageHead, Stars } from '../components/common';
+import { LoadError, Mat, Modal, PageHead, Stars } from '../components/common';
 import { get, send } from '../lib/api';
 import { MAT_NAMES, RARITY_NAMES, ROLE_NAMES, TYPE_NAMES } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
@@ -16,10 +16,13 @@ export default function MonsterDetail() {
   const [evolved, setEvolved] = useState<Monster | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const load = () => get<MonstersRes>('/monsters').then(setData);
-  useEffect(() => { void load(); }, [id]);
+  const [err, setErr] = useState('');
+  const load = () => get<MonstersRes>('/monsters').then((r) => { setErr(''); setData(r); });
+  const first = () => { setErr(''); load().catch((e) => setErr(errMsg(e))); };
+  useEffect(first, [id]);
 
   const m = data?.monsters.find((x) => String(x.id) === id);
+  if (!data && err) return <LoadError msg={err} onRetry={first} />;
   if (!data) return <div className="splash">불러오는 중…</div>;
   if (!m) return <div className="empty">리몬을 찾을 수 없어요</div>;
 

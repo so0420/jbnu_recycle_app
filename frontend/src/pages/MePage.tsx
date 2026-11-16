@@ -14,17 +14,24 @@ export default function MePage() {
   const [pw, setPw] = useState({ current: '', new: '' });
   const [del, setDel] = useState(false);
   const [delPw, setDelPw] = useState('');
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => { setRegion(me?.region?.code ?? ''); }, [me]);
   if (!me) return null;
 
-  async function run(fn: () => Promise<unknown>, ok: string) {
+  async function run(fn: () => Promise<unknown>, ok: string): Promise<boolean> {
+    if (busy) return false;
+    setBusy(true);
     try {
       await fn();
       toast(ok);
       await refresh();
+      return true;
     } catch (e) {
       toast(errMsg(e), 'err');
+      return false;
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -53,10 +60,10 @@ export default function MePage() {
         <h3>내 동네</h3>
         {me.region && <p className="small muted">{me.region.gu} {me.region.name} · {dumpDaysText(me.region.dump_weekdays)} · {me.region.confirmed ? '확정됨' : '첫 인증 때 확정'}</p>}
         <div className="field">
-          <label htmlFor="me-sido">동네 바꾸기 (확정 뒤에는 30일에 한 번, 남은 도전권은 사라져요)</label>
+          <label htmlFor="me-sido">{me.region?.confirmed && me.region.next_change_free ? '동네 바꾸기 (확정 뒤 첫 변경은 바로 할 수 있어요. 그다음부터는 30일에 한 번, 남은 도전권은 사라져요)' : '동네 바꾸기 (확정 뒤에는 30일에 한 번, 남은 도전권은 사라져요)'}</label>
           <RegionPicker idPrefix="me" value={region} onChange={setRegion} />
         </div>
-        <button className="btn ghost" disabled={!region || region === me.region?.code} onClick={() => run(() => send('/me/region', 'PATCH', { region_code: region }), '동네를 바꿨어요')}>저장</button>
+        <button className="btn ghost" disabled={busy || !region || region === me.region?.code} onClick={() => run(() => send('/me/region', 'PATCH', { region_code: region }), '동네를 바꿨어요')}>저장</button>
       </div>
 
       <div className="card">
@@ -74,12 +81,12 @@ export default function MePage() {
         <h3>비밀번호 바꾸기</h3>
         <div className="field"><label htmlFor="pw-cur">지금 비밀번호</label><input id="pw-cur" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} /></div>
         <div className="field"><label htmlFor="pw-new">새 비밀번호 (영문+숫자 8자 이상)</label><input id="pw-new" type="password" autoComplete="new-password" value={pw.new} onChange={(e) => setPw({ ...pw, new: e.target.value })} /></div>
-        <button className="btn ghost" disabled={!pw.current || pw.new.length < 8} onClick={() => run(() => send('/me/password', 'POST', pw), '비밀번호를 바꿨어요').then(() => setPw({ current: '', new: '' }))}>바꾸기</button>
+        <button className="btn ghost" disabled={busy || !pw.current || pw.new.length < 8} onClick={() => run(() => send('/me/password', 'POST', pw), '비밀번호를 바꿨어요').then((ok) => { if (ok) setPw({ current: '', new: '' }); })}>바꾸기</button>
       </div>
 
       <div className="card">
         <div className="col">
-          <button className="btn ghost" onClick={async () => { await send('/auth/logout', 'POST'); await refresh(); nav('/login'); }}>로그아웃</button>
+          <button className="btn ghost" onClick={async () => { await send('/auth/logout', 'POST').catch((e) => toast(errMsg(e), 'err')); await refresh(); nav('/login'); }}>로그아웃</button>
           <button className="btn danger" onClick={() => setDel(true)}>회원 탈퇴</button>
         </div>
         <p className="tiny muted center"><Link to="/terms">이용약관</Link> · <Link to="/privacy">개인정보 처리방침</Link> · <Link to="/location-terms">위치기반서비스 이용약관</Link></p>
@@ -92,13 +99,14 @@ export default function MePage() {
           <div className="field"><label htmlFor="del-pw">비밀번호 확인</label><input id="del-pw" type="password" value={delPw} onChange={(e) => setDelPw(e.target.value)} /></div>
           <div className="row" style={{ gap: 8 }}>
             <button className="btn ghost grow" onClick={() => setDel(false)}>취소</button>
-            <button className="btn danger grow" disabled={!delPw} onClick={async () => {
+            <button className="btn danger grow" disabled={busy || !delPw} onClick={async () => {
+              setBusy(true);
               try {
                 await send('/me/delete', 'POST', { password: delPw });
-                await send('/auth/logout', 'POST');
+                await send('/auth/logout', 'POST').catch(() => {});
                 await refresh();
                 nav('/login');
-              } catch (e) { toast(errMsg(e), 'err'); }
+              } catch (e) { toast(errMsg(e), 'err'); } finally { setBusy(false); }
             }}>탈퇴하기</button>
           </div>
         </Modal>

@@ -2,6 +2,7 @@
 
 프론트는 log 를 받아 그대로 재생만 한다(카드 흔들림·숫자·체력바).
 """
+import math
 import random
 from dataclasses import dataclass, field
 
@@ -139,12 +140,16 @@ def simulate(party: list[Unit], boss_key: str, battle_hp: float, seed: int, boss
         dmg = min(dmg, tgt.hp)
         tgt.hp -= dmg
         ev["dmg"] = round(dmg)
+        ev["hp"] = math.ceil(tgt.hp) if tgt.alive else 0       # 화면이 반올림 오차 없이 체력을 맞추게
         if not tgt.alive:
             ev["kill"] = True
         if att.side == "ally":
             total += dmg
         log.append(ev)
         return dmg
+
+    def snap() -> dict[str, int]:
+        return {x.uid: (math.ceil(x.hp) if x.alive else 0) for x in party + enemies}
 
     def pick_enemy_target() -> Unit | None:
         al = alive("ally")
@@ -165,8 +170,7 @@ def simulate(party: list[Unit], boss_key: str, battle_hp: float, seed: int, boss
             cur = sum(e.hp for e in enemies) / max(1.0, sum(e.max_hp for e in enemies))
             return min(cur, boss_hp_ratio) <= 0.5 or boss_hp_ratio <= 0.5
         if u.timing == "ally30":
-            return any(a.alive and a.hp / a.max_hp <= 0.3 for a in party) or u.skill in ("shards", "discharge",
-                                                                                        "bind", "crush")
+            return any(a.alive and a.hp / a.max_hp <= 0.3 for a in party)
         return True
 
     for rnd in range(1, MAX_ROUNDS + 1):
@@ -200,7 +204,7 @@ def simulate(party: list[Unit], boss_key: str, battle_hp: float, seed: int, boss
                         for a in party:
                             a.pollution = 0
                         log.append({"r": rnd, "a": u.uid, "act": "heal", "t": tgt.uid, "heal": round(heal),
-                                    "cleanse": True})
+                                    "cleanse": True, "hps": snap()})
                     elif s == "wrap":
                         for a in alive("ally"):
                             a.shield += u.atk * 1.0
@@ -222,13 +226,13 @@ def simulate(party: list[Unit], boss_key: str, battle_hp: float, seed: int, boss
                             h = min(u.atk * 0.6, a.max_hp - a.hp)
                             a.hp += h
                             a.def_buff = 2
-                        log.append({"r": rnd, "a": u.uid, "act": "heal_all", "amount": round(u.atk * 0.6)})
+                        log.append({"r": rnd, "a": u.uid, "act": "heal_all", "amount": round(u.atk * 0.6), "hps": snap()})
                     elif s == "cycle":
                         for f in foes:
                             hit(u, f, 0.9, rnd, act="cycle")
                         for a in alive("ally"):
                             a.hp = min(a.max_hp, a.hp + u.atk * 0.4)
-                        log.append({"r": rnd, "a": u.uid, "act": "heal_all", "amount": round(u.atk * 0.4)})
+                        log.append({"r": rnd, "a": u.uid, "act": "heal_all", "amount": round(u.atk * 0.4), "hps": snap()})
                 else:
                     tgt = min(foes, key=lambda f: f.hp) if len(foes) > 1 else foes[0]
                     hit(u, tgt, 1.0, rnd)
@@ -249,7 +253,7 @@ def simulate(party: list[Unit], boss_key: str, battle_hp: float, seed: int, boss
                 respawns += 1
                 for e in enemies:
                     e.hp = e.max_hp
-                log.append({"r": rnd, "act": "respawn"})
+                log.append({"r": rnd, "act": "respawn", "hps": snap()})
             else:
                 killed = True
                 break

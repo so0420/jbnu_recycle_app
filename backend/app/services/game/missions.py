@@ -28,9 +28,8 @@ async def status(db: AsyncSession, user: User) -> dict:
     wprog = {"verify3": w.verify_count, "types3": len(w.types or []), "habit5": w.habit_count}
     weekly = [{**m, "progress": min(m["goal"], wprog[m["id"]]), "claimed": m["id"] in (w.claimed or [])}
               for m in data.economy()["missions"]["weekly"]]
-    claimed_w = w.claimed or []
     return {"daily": daily, "weekly": weekly, "unlocked": economy.unlocked(user, "missions"),
-            "types3_material_pending": "types3" in claimed_w and "types3_mat" not in claimed_w,
+            "types3_material_pending": await _types3_pending(db, user) is not None,
             "reward_preview": {"daily_coins": economy.mult(data.economy()["missions"]["daily_reward"]["coins"]),
                                "daily_xp": economy.mult(data.economy()["missions"]["daily_reward"]["xp"]),
                                "weekly_materials": economy.mult(data.economy()["missions"]["weekly_materials"])}}
@@ -69,10 +68,22 @@ async def claim(db: AsyncSession, user: User, mission_id: str) -> dict:
     raise HTTPException(404, "미션을 찾을 수 없어요")
 
 
+async def _types3_pending(db: AsyncSession, user: User):
+    """보상을 받았지만 재료를 아직 고르지 않은 주 (이번 주, 없으면 지난주: 일요일 밤에 받고 월요일에 골라도 되게)."""
+    from datetime import timedelta
+    from app.models import UserWeekly
+    from app.services.clock import week_start
+    for ws in (week_start(), week_start() - timedelta(days=7)):
+        w = await db.get(UserWeekly, (user.id, ws))
+        if w is not None and "types3" in (w.claimed or []) and "types3_mat" not in (w.claimed or []):
+            return w
+    return None
+
+
 async def claim_weekly_materials(db: AsyncSession, user: User, material: str) -> dict:
     """types3 보상: 원하는 재료 30 (claim 뒤 한 번만)."""
-    w = await economy.weekly(db, user)
-    if "types3" not in (w.claimed or []) or "types3_mat" in (w.claimed or []):
+    w = await _types3_pending(db, user)
+    if w is None:
         raise HTTPException(400, "받을 수 있는 재료 보상이 없어요")
     if material not in data.BASE_TYPES:
         raise HTTPException(400, "재료를 골라 주세요")

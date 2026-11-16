@@ -43,6 +43,10 @@ export default function BattlePlayer({ units, log, onDone }: { units: BattleUnit
       for (const u of allies) if ((h[u.id] ?? 0) > 0) h[u.id] = Math.min(u.max_hp, h[u.id] + e.amount);
     }
     if (e.act === 'respawn') for (const u of enemies) h[u.id] = u.max_hp;
+    // 서버가 알려 준 실제 체력으로 맞춘다 (반올림 오차로 쓰러진 유닛이 살아 보이지 않게)
+    if (e.t && e.hp !== undefined) h[e.t] = e.hp;
+    if (e.t && e.kill) h[e.t] = 0;
+    if (e.hps) Object.assign(h, e.hps);
     if (visual) {
       if (e.act === 'skill') setLine(`${name(e.a)}의 「${SKILL_NAMES[e.skill ?? ''] ?? '스킬'}」!`);
       else if (e.act === 'slam') setLine('스티로폼 거인의 내려찍기!');

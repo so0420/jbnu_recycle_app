@@ -9,9 +9,9 @@ map $http_cf_connecting_ip $recycle_client_ip {
     default $http_cf_connecting_ip;
 }
 
-# 접속 로그: 쿼리스트링 없이 경로($uri)만 남긴다.
-# 지도·인증 요청 주소에 위치 좌표(lat, lng)가 들어가므로 $request 를 쓰는 기본 형식(combined_host)을 쓰지 않는다.
-log_format recycle_private '$recycle_client_ip [$time_local] "$request_method $uri $server_protocol" '
+# 접속 로그: 주소(경로·쿼리)를 남기지 않는다 (개인정보 처리방침: 어느 화면·주소·위치를 요청했는지는 기록하지 않음).
+# 지도·인증 요청 주소에 위치 좌표(lat, lng)가, 수거장 상세 주소에 장소 번호가 들어가기 때문.
+log_format recycle_private '$recycle_client_ip [$time_local] "$request_method" '
                            '$status $body_bytes_sent $request_time';
 
 server {
@@ -22,6 +22,8 @@ server {
     # Cloudflare 대역만 허용 (직접 IP 접근 차단)
     include snippets/cloudflare-allow.conf;
     access_log /var/log/nginx/recycle_access.log recycle_private;
+    # 오류 로그도 요청 줄(좌표 포함)을 남기므로 심각한 오류만 따로 기록
+    error_log /var/log/nginx/recycle_error.log crit;
 
     return 301 https://$host$request_uri;
 }
@@ -34,6 +36,8 @@ server {
     # Cloudflare 대역만 허용 (직접 IP 접근 차단)
     include snippets/cloudflare-allow.conf;
     access_log /var/log/nginx/recycle_access.log recycle_private;
+    # 오류 로그도 요청 줄(좌표 포함)을 남기므로 심각한 오류만 따로 기록
+    error_log /var/log/nginx/recycle_error.log crit;
 
     ssl_certificate     /etc/ssl/certs/so4.kr.pem;
     ssl_certificate_key /etc/ssl/private/so4.kr.key;

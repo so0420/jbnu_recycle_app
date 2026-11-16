@@ -22,13 +22,16 @@ from app.services.clock import now  # noqa: E402
 async def main(login_id: str, revoke: bool, create: bool) -> None:
     async with AsyncSessionLocal() as db:
         u = (await db.execute(select(User).where(User.login_id == login_id.lower()))).scalars().first()
+        if u is not None and create:
+            sys.exit(f"이미 있는 아이디라 만들지 않았어요 (관리자 지정도 하지 않음): {login_id}")
         if u is None and create:
             pw = sys.stdin.readline().strip()
             if not pw:
                 sys.exit("비밀번호를 표준 입력으로 넣어 주세요")
             t = now()
             u = User(login_id=login_id.lower(), password_hash=hash_password(pw), nickname="관리자", role="admin",
-                     agreed_terms_at=t, age_confirmed_at=t, agreed_location_at=t, policy_version="admin",
+                     agreed_terms_at=t, age_confirmed_at=t, agreed_location_at=t, agreed_overseas_at=t,
+                     policy_version="admin",
                      token_version=0, xp=0, level=1, coins=0, tickets=0, crystals=0, bag_capacity=6, pity=0,
                      starter_done=False)
             db.add(u)

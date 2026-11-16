@@ -12,6 +12,7 @@ from app.core.config import settings
 engine = create_async_engine(
     settings.database_url,
     echo=settings.DB_ECHO,
+    hide_parameters=settings.ENVIRONMENT == "production",   # 오류 기록에 좌표 같은 값이 남지 않게
     pool_pre_ping=True,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,

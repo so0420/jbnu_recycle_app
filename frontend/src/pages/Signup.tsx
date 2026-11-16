@@ -14,6 +14,7 @@ export default function Signup() {
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeAge, setAgreeAge] = useState(false);
   const [agreeLoc, setAgreeLoc] = useState(false);
+  const [agreeOverseas, setAgreeOverseas] = useState(false);
   const [doc, setDoc] = useState<null | 'terms' | 'privacy' | 'location'>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,12 +25,15 @@ export default function Signup() {
     e.preventDefault();
     setErr('');
     if (f.password !== f.password2) return setErr('비밀번호가 서로 달라요');
-    if (!agreeTerms || !agreePrivacy || !agreeAge || !agreeLoc) return setErr('필수 항목에 모두 동의해 주세요');
+    const nick = f.nickname.trim();
+    if (nick.length < 2 || nick.length > 12) return setErr('닉네임은 2~12자로 만들어 주세요');
+    if (!agreeTerms || !agreePrivacy || !agreeAge || !agreeLoc || !agreeOverseas) return setErr('필수 항목에 모두 동의해 주세요');
     setBusy(true);
     try {
       await send('/auth/signup', 'POST', {
-        login_id: f.login_id, password: f.password, nickname: f.nickname, region_code: f.region_code || null,
+        login_id: f.login_id, password: f.password, nickname: nick, region_code: f.region_code || null,
         agree_terms: agreeTerms, agree_privacy: agreePrivacy, agree_age: agreeAge, agree_location: agreeLoc,
+        agree_overseas: agreeOverseas,
       });
       await refresh();
       nav('/starter', { replace: true });
@@ -61,13 +65,14 @@ export default function Signup() {
           <input id="su-nick" value={f.nickname} onChange={set('nickname')} placeholder="2~12자" required minLength={2} maxLength={12} />
         </div>
         <div className="field">
-          <label htmlFor="su-sido">내 동네 (첫 배출 인증 위치로 확정돼요 · 나중에 정해도 돼요)</label>
+          <label htmlFor="su-sido">내 동네 (첫 배출 인증 때 확정돼요 · 확정 뒤 한 번은 바로 바꿀 수 있어요)</label>
           <RegionPicker idPrefix="su" value={f.region_code} onChange={(code) => setF({ ...f, region_code: code })} />
         </div>
         <div className="col" style={{ gap: 6 }}>
           <label className="check"><input type="checkbox" checked={agreeAge} onChange={(e) => setAgreeAge(e.target.checked)} /> <span>(필수) 만 14세 이상입니다</span></label>
           <label className="check"><input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} /> <span>(필수) 이용약관에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('terms')}>보기</button></span></label>
-          <label className="check"><input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} /> <span>(필수) 개인정보 수집·이용과 국외 이전(사진 판정·지도·글꼴)에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('privacy')}>보기</button></span></label>
+          <label className="check"><input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} /> <span>(필수) 개인정보 수집·이용에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('privacy')}>보기</button></span></label>
+          <label className="check"><input type="checkbox" checked={agreeOverseas} onChange={(e) => setAgreeOverseas(e.target.checked)} /> <span>(필수) 개인정보 국외 이전(사진 판정 OpenAI·지도 OpenStreetMap·Cloudflare)에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('privacy')}>보기</button></span></label>
           <label className="check"><input type="checkbox" checked={agreeLoc} onChange={(e) => setAgreeLoc(e.target.checked)} /> <span>(필수) 위치기반서비스 이용약관에 동의합니다 <button type="button" className="link-btn" onClick={() => setDoc('location')}>보기</button></span></label>
         </div>
         {err && <p className="err">{err}</p>}

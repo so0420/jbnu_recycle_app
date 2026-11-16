@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,13 +31,15 @@ async def raid_status(user: User = Depends(auth.current_user), db: AsyncSession 
 
 
 @router.post("/raid/attempt")
-async def attempt(user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+async def attempt(background: BackgroundTasks, user: User = Depends(auth.current_user),
+                  db: AsyncSession = Depends(get_db)):
     user = await locks.lock_user(db, user)
     r = await raid_svc.attempt(db, user)
     raid_id = r.pop("raid_id", None)
     await db.commit()
     if r["killed"] and raid_id:
-        await raid_svc.pay_kill_rewards(raid_id)
+        # 참여자 보상은 응답 뒤에 따로 지급 (실패분은 스케줄러가 이어서 지급)
+        background.add_task(raid_svc.pay_kill_rewards, raid_id)
     return r
 
 
@@ -47,5 +49,7 @@ async def standings(mine: str | None = None, db: AsyncSession = Depends(get_db))
 
 
 @router.get("/regions/{unit}/feed")
-async def feed(unit: str, db: AsyncSession = Depends(get_db)):
+async def feed(unit: str, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    if unit != await raid_svc.user_unit(db, user):
+        raise HTTPException(403, "우리 동네 소식만 볼 수 있어요")
     return await region.feed(db, unit)

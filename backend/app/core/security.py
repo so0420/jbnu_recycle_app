@@ -29,8 +29,32 @@ from app.core.config import settings
 
 
 # --------- Rate limiter (전역에서 접근 가능) ---------
+def client_key(request: Request) -> str:
+    """로그인한 요청은 사용자별, 아니면 IP별 (IPv6 는 /64 단위로 묶는다).
+
+    같은 와이파이(강의실·기숙사)를 쓰는 여러 사용자가 서로의 한도를 깎지 않게 한다.
+    """
+    import ipaddress
+
+    import jwt
+    tok = request.cookies.get("rc_session")
+    if tok:
+        try:
+            return "u:" + str(int(jwt.decode(tok, settings.JWT_SECRET, algorithms=["HS256"])["sub"]))
+        except Exception:
+            pass
+    ip = get_remote_address(request)
+    try:
+        a = ipaddress.ip_address(ip)
+        if a.version == 6:
+            return "n6:" + str(ipaddress.ip_network(f"{ip}/64", strict=False).network_address)
+    except ValueError:
+        pass
+    return "ip:" + ip
+
+
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=client_key,
     default_limits=[settings.RATE_LIMIT_DEFAULT] if settings.RATE_LIMIT_ENABLED else [],
     enabled=settings.RATE_LIMIT_ENABLED,
 )

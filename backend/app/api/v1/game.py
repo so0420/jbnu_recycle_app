@@ -104,6 +104,15 @@ async def exchange(body: ExchangeIn, user: User = Depends(auth.current_user), db
     return r
 
 
+@router.get("/capsules/rates")
+async def capsule_rates():
+    """이용약관에서 약속한 캡슐 확률 공개 (economy.yaml 값을 그대로 보여 준다)."""
+    c = data.economy()["capsule"]
+    return {"rare_rate": c["rare_rate"], "clean_bonus_rate": c["clean_bonus_rate"], "pity": c["pity"],
+            "shiny_rate": c["shiny_rate"], "shiny_clean_rate": c["shiny_clean_rate"],
+            "max_stars": c["max_stars"], "dup_overflow_materials": c["dup_overflow_materials"]}
+
+
 @router.get("/capsules")
 async def capsules(user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(select(Capsule).where(Capsule.user_id == user.id, Capsule.opened_at.is_(None))

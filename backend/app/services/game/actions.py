@@ -67,7 +67,10 @@ def is_dump_time(r: Region | None, t: datetime) -> bool:
 def next_dump_window(r: Region | None, t: datetime) -> datetime | None:
     if r is None or not r.dump_weekdays:
         return None
-    for h in range(0, 24 * 8):
+    start = 0
+    while start < 48 and is_dump_time(r, (t + timedelta(hours=start)).replace(minute=0, second=0, microsecond=0)):
+        start += 1                       # 지금 배출 시간이면 이번 시간대가 끝난 뒤의 다음 시간대를 찾는다
+    for h in range(start, 24 * 8):
         c = (t + timedelta(hours=h)).replace(minute=0, second=0, microsecond=0)
         if is_dump_time(r, c):
             return c
@@ -78,7 +81,6 @@ def next_dump_window(r: Region | None, t: datetime) -> datetime | None:
 async def on_scan(db: AsyncSession, user: User, res: ClassifyResult, log: ClassifyLog) -> dict:
     eco = data.economy()
     d = await economy.daily(db, user)
-    d.scan_count += 1
     out: dict = {"xp": 0, "bag": None, "habit": None, "dex_new": None, "duplicate": False}
     if res.category is None:
         return out
@@ -90,6 +92,7 @@ async def on_scan(db: AsyncSession, user: User, res: ClassifyResult, log: Classi
     if any(images.hamming(log.phash, h) <= 6 for h in recent if h):
         out["duplicate"] = True
         return out
+    d.scan_count += 1          # 미션은 새로 알아본 물건만 센다 (같은 사진·모르는 사진 제외)
     if d.guide_xp_count < eco["account_xp"]["scan_daily_cap"]:
         d.guide_xp_count += 1
         out["xp"] = (await economy.add_xp(db, user, eco["account_xp"]["scan"], "scan", str(log.id)))["xp"]
@@ -126,7 +129,8 @@ async def bag_count(db: AsyncSession, user: User) -> int:
 
 
 # ───────── 배출 인증 ─────────
-async def check_location(db: AsyncSession, lat: float, lng: float, accuracy: float) -> tuple[Place, float]:
+async def check_location(db: AsyncSession, lat: float, lng: float, accuracy: float) -> list[tuple[Place, float]]:
+    """인증 가능한 반경 안의 수거장 목록 (가까운 순). 없으면 VerifyFail."""
     if accuracy > settings.VERIFY_MAX_ACCURACY_M:
         raise VerifyFail("LOW_ACCURACY", "위치가 정확하지 않아요. 잠시 뒤 다시 시도하거나 밖으로 나와 주세요",
                          {"accuracy": accuracy})
@@ -137,7 +141,16 @@ async def check_location(db: AsyncSession, lat: float, lng: float, accuracy: flo
         detail = {"nearest_m": round(near[0][1]) if near else None,
                   "nearest_name": (near[0][0].name or near[0][0].address) if near else None, "limit_m": round(limit)}
         raise VerifyFail("TOO_FAR", f"수거장에서 {round(limit)}m 안에서 인증해 주세요", detail)
-    return near[0]
+    return [(p, dist) for p, dist in near if dist <= limit]
+
+
+async def pick_place(db: AsyncSession, user: User, cands: list[tuple[Place, float]]) -> tuple[Place, float] | None:
+    """같은 자리에 수거함이 여러 개면 오늘 아직 인증하지 않은 곳을 고른다 (특수 수거함 먼저)."""
+    order = sorted(cands, key=lambda pd: (pd[0].kind not in SPECIAL_KIND_TYPE, pd[1]))
+    for p, dist in order:
+        if not await place_done_today(db, user, p):
+            return p, dist
+    return None
 
 
 async def settle(db: AsyncSession, user: User, place: Place, v: Verification) -> dict:
@@ -256,10 +269,11 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
 
 async def _evolution_ready(db: AsyncSession, user: User) -> list[dict]:
     hab = await economy.habits(db, user)
+    mats = await economy.materials(db, user)
     ready = []
     for m in await monsters.list_owned(db, user):
         r = monsters.evolve_rule(m)
-        if r and m.level >= r["level"] and hab.get(monsters.habit_type(m), 0) >= r["habits"]:
+        if r and m.level >= r["level"] and hab.get(monsters.habit_type(m), 0) >= r["habits"]                 and mats.get(monsters.levelup_cost(m)["material"], 0) >= r["materials"]                 and user.crystals >= r["crystals"]:
             ready.append({"id": m.id, "name": data.line(m.species)["names"][m.stage - 1]})
     return ready
 

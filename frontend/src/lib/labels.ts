@@ -50,7 +50,7 @@ export const STAGE_COLORS: Record<string, string> = {
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export function dumpDaysText(s: string | undefined | null): string {
-  if (!s) return '매일 (요일 정보 없음)';
+  if (!s) return '배출 요일 정보 없음 (시·군·구청 안내 확인)';
   return s
     .split(',')
     .map((d) => WEEKDAYS[Number(d)])

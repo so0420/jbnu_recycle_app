@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PageHead } from '../components/common';
+import { LoadError, PageHead } from '../components/common';
 import { get, send } from '../lib/api';
 import { MAT_NAMES } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
@@ -18,7 +18,9 @@ export default function Missions() {
   const { me, refresh, toast } = useStore();
   const [d, setD] = useState<Res | null>(null);
   const [busy, setBusy] = useState(false);
-  const load = () => get<Res>('/missions').then(setD).catch((e) => toast(errMsg(e), 'err'));
+  const [err, setErr] = useState('');
+  const load = () => get<Res>('/missions').then((r) => { setErr(''); setD(r); })
+    .catch((e) => { if (d) toast(errMsg(e), 'err'); else setErr(errMsg(e)); });
   useEffect(() => { void load(); }, []);
 
   async function claim(id: string) {
@@ -50,6 +52,7 @@ export default function Missions() {
     }
   }
 
+  if (!d && err) return <LoadError msg={err} onRetry={() => { setErr(''); void load(); }} />;
   if (!d) return <div className="splash">불러오는 중…</div>;
   const Row = ({ m, reward }: { m: M; reward: string }) => (
     <div className="list-item">

@@ -36,7 +36,7 @@ export default function Regions() {
   useEffect(() => {
     get<Standings>(`/regions${mine ? `?mine=${encodeURIComponent(mine)}` : ''}`).then(setSt)
       .catch((e) => { toast(errMsg(e), 'err'); setSt({ mode: '', total: 0, rows: [], mine: null }); });
-    if (mine) get<Ev[]>(`/regions/${encodeURIComponent(mine)}/feed`).then(setFeed);
+    if (mine) get<Ev[]>(`/regions/${encodeURIComponent(mine)}/feed`).then(setFeed).catch(() => setFeed([]));
   }, [mine]);
 
   if (!st) return <div className="splash">불러오는 중…</div>;
@@ -68,7 +68,7 @@ export default function Regions() {
             <p key={i} className="small">
               {e.type === 'restore' && `${e.nickname ?? '누군가'}님이 분리배출했어요 (+${e.amount})`}
               {e.type === 'raid_kill' && `레이드 보스를 쓰러뜨렸어요! (+${e.amount})`}
-              <span className="tiny muted"> · {new Date(e.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+              <span className="tiny muted"> · {Number(e.at.slice(5, 7))}월 {Number(e.at.slice(8, 10))}일</span>
             </p>
           ))}
         </div>

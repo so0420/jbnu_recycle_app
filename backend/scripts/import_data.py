@@ -134,7 +134,7 @@ async def main(data_dir: Path, force: bool) -> None:
         gone = [pid for pid, s, sid in existing if (s, sid) not in seen]
         for i in range(0, len(gone), CHUNK):
             await db.execute(update(Place).where(Place.id.in_(gone[i:i + CHUNK])).values(is_active=False))
-        db.add(JobLog(name="import_data", key=key))
+        await db.execute(mysql_insert(JobLog).values(name="import_data", key=key).prefix_with("IGNORE"))
         await db.commit()
     print(f"places {n} (원본에서 사라져 비활성 {len(gone)})")
 

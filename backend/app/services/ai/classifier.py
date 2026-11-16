@@ -149,6 +149,10 @@ class VerifyJudge:
     uncertain: bool
     unavailable: bool = False      # 두 AI 모두 판단하지 못함 → 다시 시도하게 한다
 
+    @classmethod
+    def busy(cls) -> "VerifyJudge":
+        return cls(False, None, "none", False, unavailable=True)
+
 
 async def judge_disposal(db: AsyncSession, image_b64: str) -> VerifyJudge:
     """수거장에서 분리배출하는 사진인지 판정."""

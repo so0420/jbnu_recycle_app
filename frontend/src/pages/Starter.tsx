@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Remon } from '../components/Art';
+import { LoadError } from '../components/common';
 import { get, send } from '../lib/api';
 import { ROLE_NAMES, TYPE_NAMES } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
@@ -13,10 +14,15 @@ export default function Starter() {
   const [rows, setRows] = useState<StarterRow[]>([]);
   const [pick, setPick] = useState('');
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const load = () => {
+    setErr('');
+    get<{ starters: StarterRow[] }>('/monsters').then((r) => setRows(r.starters)).catch((e) => setErr(errMsg(e)));
+  };
 
   useEffect(() => {
     if (me?.starter_done) nav('/', { replace: true });
-    get<{ starters: StarterRow[] }>('/monsters').then((r) => setRows(r.starters));
+    else load();
   }, [me, nav]);
 
   async function go() {
@@ -37,6 +43,7 @@ export default function Starter() {
     <div className="auth-wrap" style={{ justifyContent: 'flex-start' }}>
       <h1>첫 리몬을 골라 주세요</h1>
       <p className="muted">리몬은 제대로 버린 쓰레기에서 태어난 친구예요. 함께 동네의 오염 괴물을 물리쳐요.</p>
+      {err && <LoadError msg={err} onRetry={load} />}
       <div className="col">
         {rows.map((r) => (
           <button key={r.species} className={`card ${pick === r.species ? 'pop' : ''}`} style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => setPick(r.species)} aria-pressed={pick === r.species}>

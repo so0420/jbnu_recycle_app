@@ -1,5 +1,6 @@
 """1차 판정: Ollama System One(clef-flash). 선택지별 확률만 돌려받는다."""
 import asyncio
+import math
 
 import httpx
 
@@ -23,8 +24,14 @@ class SystemOneError(Exception):
 QUEUE_WAIT = 25.0
 
 
-def _validate(questions: dict, answers: dict) -> dict:
+def _prob(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) and 0 <= x <= 1
+
+
+def _validate(questions: dict, answers) -> dict:
     """요청한 질문마다 기대한 형태의 답이 있는지 확인. 아니면 SystemOneError."""
+    if not isinstance(answers, dict):
+        raise SystemOneError("answers 형식 오류")
     for key, q in questions.items():
         a = answers.get(key)
         if not isinstance(a, dict):
@@ -35,8 +42,10 @@ def _validate(questions: dict, answers: dict) -> dict:
                 raise SystemOneError(f"choice 형식 오류: {key}")
             if any(k not in q["criteria"] for k in probs):
                 raise SystemOneError(f"알 수 없는 선택지: {key}")
+            if not all(_prob(v) for v in probs.values()):
+                raise SystemOneError(f"확률 값 오류: {key}")
         elif q["type"] == "noul":
-            if not isinstance(a.get("noul"), (int, float)):
+            if not _prob(a.get("noul")):
                 raise SystemOneError(f"noul 형식 오류: {key}")
     return answers
 
@@ -62,7 +71,7 @@ async def ask(state: str, images_b64: list[str], questions: dict) -> dict:
                     r = await client.post(settings.SYSTEM_ONE_URL, json=payload)
                     r.raise_for_status()
                     return _validate(questions, r.json()["answers"])
-            except (httpx.HTTPError, KeyError, ValueError, TypeError) as e:
+            except (httpx.HTTPError, KeyError, ValueError, TypeError, AttributeError) as e:
                 logger.warning(f"System One 호출 실패: {e!r}")
                 raise SystemOneError(str(e)) from e
         finally:

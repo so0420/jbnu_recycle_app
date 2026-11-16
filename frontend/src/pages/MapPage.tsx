@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { PageHead } from '../components/common';
 import { get } from '../lib/api';
 import { getPosition } from '../lib/device';
+import { useStore } from '../lib/store';
 import type { Place } from '../lib/types';
 
 const JEONJU: [number, number] = [35.8242, 127.148];
@@ -22,12 +23,17 @@ export default function MapPage() {
   const [kinds, setKinds] = useState<string[]>(['recycle_point', 'clothes_bin', 'battery_bin', 'reverse_vending']);
   const [sel, setSel] = useState<Place | null>(null);
   const [count, setCount] = useState(0);
+  const [loadErr, setLoadErr] = useState(false);
+  const { me } = useStore();
+  const home = me?.region?.center;
   const kindsRef = useRef(kinds);
   kindsRef.current = kinds;
+  const seq = useRef(0);
 
   async function load() {
     const m = map.current;
     if (!m || !layer.current) return;
+    const my = ++seq.current;            // 늦게 온 옛 응답이 새 결과를 덮지 않게
     if (kindsRef.current.length === 0) {
       layer.current.clearLayers();
       setCount(0);
@@ -35,7 +41,16 @@ export default function MapPage() {
     }
     const c = m.getCenter();
     const radius = Math.min(3000, Math.max(300, m.distance(c, m.getBounds().getNorthEast())));
-    const rows = await get<Place[]>(`/places?lat=${c.lat}&lng=${c.lng}&radius=${Math.round(radius)}&kind=${kindsRef.current.join(',')}`).catch(() => []);
+    const asked = kindsRef.current.join(',');
+    let rows: Place[];
+    try {
+      rows = await get<Place[]>(`/places?lat=${c.lat}&lng=${c.lng}&radius=${Math.round(radius)}&kind=${asked}`);
+      setLoadErr(false);
+    } catch {
+      if (my === seq.current) setLoadErr(true);
+      return;
+    }
+    if (my !== seq.current || asked !== kindsRef.current.join(',') || !layer.current) return;
     layer.current.clearLayers();
     for (const p of rows) {
       const k = KINDS.find((x) => x.key === p.kind);
@@ -49,7 +64,9 @@ export default function MapPage() {
 
   useEffect(() => {
     if (!box.current || map.current) return;
-    const m = L.map(box.current, { zoomControl: false, attributionControl: true }).setView(JEONJU, 15);
+    // 위치를 못 받으면 내 동네 중심, 그것도 없으면 시범 지역(전주)
+    const m = L.map(box.current, { zoomControl: false, attributionControl: true })
+      .setView(home && home[0] ? home : JEONJU, 15);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '© OpenStreetMap',
     }).addTo(m);
@@ -86,6 +103,7 @@ export default function MapPage() {
         ))}
       </div>
       <div className="map-wrap" ref={box} />
+      {loadErr && <p className="err small">수거장 정보를 불러오지 못했어요. 지도를 조금 움직이면 다시 시도해요.</p>}
       {sel && (
         <div className="card pop" id="place-card">
           <div className="row between">

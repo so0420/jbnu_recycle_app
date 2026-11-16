@@ -84,8 +84,10 @@ async def _retention() -> None:
             await db.execute(update(model).where(model.created_at < cutoff, model.photo_path != "")
                              .values(photo_path=""))
         await db.execute(update(Verification).where(Verification.created_at < cutoff,
-                                                    (Verification.lat != 0) | (Verification.accuracy != 0))
-                         .values(lat=0, lng=0, accuracy=0))
+                                                    (Verification.lat != 0) | (Verification.accuracy != 0)
+                                                    | Verification.distance_m.is_not(None)
+                                                    | Verification.reward_json.is_not(None))
+                         .values(lat=0, lng=0, accuracy=0, distance_m=None, reward_json=None))
         await db.execute(update(User).where(User.last_verified_at < cutoff, User.last_lat.is_not(None))
                          .values(last_lat=None, last_lng=None))
         await db.execute(update(RaidAttempt).where(RaidAttempt.created_at < now() - timedelta(days=7))
@@ -103,11 +105,16 @@ async def daily_jobs() -> None:
 
 
 async def loop() -> None:
+    from app.services.game import raid
+    n = 0
     while True:
         try:
             await daily_jobs()
+            if n % 10 == 0:                       # 10분마다: 지급이 끝나지 않은 레이드 처치 보상 이어서
+                await raid.retry_pending_kills()
         except Exception as e:  # 스케줄러가 죽지 않게
             logger.error(f"주기 작업 실패: {e!r}")
+        n += 1
         await asyncio.sleep(60)
 
 

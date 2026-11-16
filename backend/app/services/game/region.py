@@ -6,13 +6,12 @@
 - dong:    행정동
 """
 import time
-from datetime import timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import Region, RegionEvent, RegionState, User, Verification, Zone
+from app.models import Region, RegionEvent, RegionState, User, Zone
 from app.services.clock import now, week_start
 from app.services.game import data
 
@@ -76,7 +75,10 @@ async def weight(db: AsyncSession, unit: str) -> float:
     if not pops or not us.get(unit, {}).get("population"):
         return 1.0
     w = (sum(pops) / len(pops)) / us[unit]["population"]
-    return max(cfg()["w_min"], min(cfg()["w_max"], w))
+    c = cfg()
+    if settings.REGION_MODE == "sigungu":       # 전국 시군구는 인구 차이가 80배 넘게 나서 범위를 넓힌다
+        return max(c["w_min_sigungu"], min(c["w_max_sigungu"], w))
+    return max(c["w_min"], min(c["w_max"], w))
 
 
 async def state(db: AsyncSession, unit: str) -> RegionState:
@@ -98,11 +100,13 @@ async def active_unit_count(db: AsyncSession) -> int:
 
 
 async def r_base(db: AsyncSession) -> float:
-    n = await active_unit_count(db)
-    since = now() - timedelta(days=7)
-    cnt = (await db.execute(select(func.count()).select_from(Verification).where(
-        Verification.result == "success", Verification.created_at >= since))).scalar_one()
-    avg = cnt / 7
+    """인증 1회 회복량. 활성 단위 수와 하루 평균 인증 수를 같은 기간(이번 주)으로 센다."""
+    ws = week_start()
+    n, total = (await db.execute(select(func.count(), func.coalesce(func.sum(RegionState.verifs), 0)).where(
+        RegionState.week_start == ws, RegionState.verifs > 0))).one()
+    n = max(1, int(n))
+    days = min(7, (now().date() - ws).days + 1)
+    avg = int(total) / days
     return cfg()["target_restore"] * n / max(avg, n)
 
 
@@ -134,7 +138,7 @@ async def on_verification(db: AsyncSession, unit: str, user: User) -> float:
 async def daily_decay(db: AsyncSession) -> None:
     """이번 주 상태가 있는 단위만 감소 (참여자가 없는 단위는 시작값으로 표시)."""
     c = cfg()
-    await db.execute(update(RegionState).where(RegionState.week_start == week_start())
+    await db.execute(update(RegionState).where(RegionState.week_start == week_start(), RegionState.verifs > 0)
                      .values(cleanliness=func.greatest(c["min"], RegionState.cleanliness - c["daily_decay"])))
 
 
@@ -177,5 +181,6 @@ async def standings(db: AsyncSession, mine: str | None = None, top: int = 30) ->
 async def feed(db: AsyncSession, unit: str, limit: int = 20) -> list[dict]:
     q = (select(RegionEvent).where(RegionEvent.unit == unit, RegionEvent.type != "decay")
          .order_by(RegionEvent.id.desc()).limit(limit))
-    return [{"type": e.type, "amount": e.amount, "nickname": e.nickname, "at": e.created_at.isoformat()}
+    # 같은 동네 회원에게만 보이고, 시각은 날짜까지만 알려 준다
+    return [{"type": e.type, "amount": e.amount, "nickname": e.nickname, "at": e.created_at.date().isoformat()}
             for e in (await db.execute(q)).scalars()]

@@ -20,7 +20,10 @@ def max_stage(line_id: str) -> int:
 
 
 def level_cap(m: UserMonster) -> int:
-    return sp()["level_cap"][m.stage - 1]
+    caps = sp()["level_cap"]
+    if max_stage(m.species) == 1:          # 진화하지 않는 전설은 처음부터 마지막 단계 상한
+        return caps[-1]
+    return caps[m.stage - 1]
 
 
 def stats(m: UserMonster) -> dict:
@@ -88,6 +91,8 @@ async def list_owned(db: AsyncSession, user: User) -> list[UserMonster]:
 
 async def level_up(db: AsyncSession, user: User, m: UserMonster) -> dict:
     if m.level >= level_cap(m):
+        if evolve_rule(m) is None:
+            raise HTTPException(400, "최대 레벨이에요")
         raise HTTPException(400, "이 단계의 최대 레벨입니다. 진화가 필요해요")
     c = levelup_cost(m)
     await economy.add_resource(db, user, f"mat:{c['material']}", -c["materials"], "levelup", str(m.id), scale=False)

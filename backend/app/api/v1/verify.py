@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -19,6 +20,7 @@ from app.services.game import actions
 
 router = APIRouter()
 OLD_PHOTO_MINUTES = 10
+AI_BUDGET_S = 70          # Cloudflare(100초)보다 먼저 끝내고 결과를 돌려준다
 
 
 @router.get("/verify/nearest")
@@ -47,10 +49,10 @@ async def verify(request: Request, photo: UploadFile = File(...), lat: float = F
 
     raw = await photo.read()
     try:
-        img = images.open_image(raw)
+        img = await asyncio.to_thread(images.open_image, raw)     # 이미지 처리는 이벤트 루프 밖에서
     except images.BadImage:
         raise HTTPException(400, "사진을 읽을 수 없어요. 다시 찍어 주세요")
-    ph = images.phash(img)
+    ph = await asyncio.to_thread(images.phash, img)
     taken = images.exif_taken_at(raw)
     if taken is None and taken_ms and 0 < taken_ms < 4_102_444_800_000:
         # 앱이 사진을 다시 저장하면서 EXIF 가 빠지므로, 기기가 알려 준 파일 시각을 대신 쓴다
@@ -79,13 +81,16 @@ async def verify(request: Request, photo: UploadFile = File(...), lat: float = F
     v = new_v()
     user = await locks.lock_user(db, user)
     try:
-        place, dist = await actions.check_location(db, lat, lng, accuracy)
+        cands = await actions.check_location(db, lat, lng, accuracy)
     except actions.VerifyFail as e:
         return await fail(v, e.code, e.message, e.detail)
+    cand_ids = [p.id for p, _ in cands]
+    picked = await actions.pick_place(db, user, cands)
+    place, dist = picked or cands[0]
     v.place_id, v.distance_m = place.id, round(dist, 1)
     if taken and abs(now() - taken) > timedelta(minutes=OLD_PHOTO_MINUTES):
         return await fail(v, "OLD_PHOTO", "방금 찍은 사진으로 인증해 주세요")
-    if await actions.place_done_today(db, user, place):
+    if picked is None:
         return await fail(v, "PLACE_ALREADY_TODAY", "이 수거장은 오늘 이미 인증했어요. 내일 다시 와 주세요")
     if await actions.duplicate_photo(db, user, place, ph):
         return await fail(v, "DUPLICATE_PHOTO", "이미 쓴 사진이에요. 새로 찍어 주세요")
@@ -93,8 +98,13 @@ async def verify(request: Request, photo: UploadFile = File(...), lat: float = F
     await db.rollback()
     await reserve_ai(db, user)
 
-    # ── 2단계: AI 판정 (잠금 없이) ──
-    judge = await classifier.judge_disposal(db, images.to_b64_jpeg(img, settings.AI_IMAGE_EDGE))
+    # ── 2단계: AI 판정 (잠금 없이, 전체 시간 제한) ──
+    b64 = await asyncio.to_thread(images.to_b64_jpeg, img, settings.AI_IMAGE_EDGE)
+    try:
+        async with asyncio.timeout(AI_BUDGET_S):
+            judge = await classifier.judge_disposal(db, b64)
+    except TimeoutError:
+        judge = classifier.VerifyJudge.busy()
     if judge.unavailable:
         await refund_ai(db, user)
         return await fail(_with_place(new_v(), place_id, dist), "AI_BUSY",
@@ -108,13 +118,19 @@ async def verify(request: Request, photo: UploadFile = File(...), lat: float = F
     # ── 3단계: 잠금 후 다시 확인하고 보상 (동시 요청 방지) ──
     user = await locks.lock_user(db, user)
     place = await db.get(Place, place_id)
+    if await actions.place_done_today(db, user, place):     # 그새 다른 요청이 이 수거장을 썼으면 옆 수거함으로
+        others = [(p, d) for p, d in cands if p.id in cand_ids and p.id != place_id]
+        alt = await actions.pick_place(db, user, others)
+        if alt is not None:
+            place, dist = alt
+            place_id = place.id
     v = _with_place(new_v(), place_id, dist)
     v.judged_by, v.score = judge.judged_by, judge.score
     if await actions.place_done_today(db, user, place):
         return await fail(v, "PLACE_ALREADY_TODAY", "이 수거장은 오늘 이미 인증했어요. 내일 다시 와 주세요")
     if await actions.duplicate_photo(db, user, place, ph):
         return await fail(v, "DUPLICATE_PHOTO", "이미 쓴 사진이에요. 새로 찍어 주세요")
-    v.photo_path = images.save(img, "verify")
+    v.photo_path = await asyncio.to_thread(images.save, img, "verify")
     try:
         v.result = "success"
         reasons = [r for r in [actions.suspicious_speed(user, lat, lng),
