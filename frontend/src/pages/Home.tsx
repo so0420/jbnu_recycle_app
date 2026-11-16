@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Garden, Icon, Remon } from '../components/Art';
+import GardenPets from '../components/GardenPets';
 import { get } from '../lib/api';
 import { dumpDaysText, STAGE_COLORS } from '../lib/labels';
 import { useStore } from '../lib/store';
@@ -29,14 +30,25 @@ export default function Home() {
   const reg = me.region;
   const dim = (reg?.cleanliness ?? 600) < 400;
   const nextDump = me.today.next_dump_at ? new Date(me.today.next_dump_at) : null;
+  // 리몬을 누르면 하는 말: 오늘 할 일 먼저, 없으면 분리배출 팁
+  const todo = [
+    me.today.dump_time_now && '지금 배출 시간이야! 수거장에 가 보자',
+    me.today.verify_reward_left > 0 && `오늘 배출 인증 ${me.today.verify_reward_left}번 더 하면 보상을 받아!`,
+    caps > 0 && `캡슐이 ${caps}개 있어! 열어 볼래?`,
+    claimable > 0 && `받을 미션 보상이 ${claimable}개 있어`,
+    me.bag.count > 0 && `가방에 ${me.bag.count}개 모였어. 수거장에서 정산하자!`,
+    dim && '동네가 더러워졌어… 같이 치우자!',
+  ].filter(Boolean) as string[];
+  const petLines = todo.length ? todo : [
+    '반가워!', '오늘도 분리배출 화이팅!', '페트병은 라벨 떼고 찌그러뜨려 줘!', '깨끗이 헹궈서 버리면 캡슐이 더 좋아져!',
+    '음식물 묻은 비닐은 일반쓰레기야', '건전지는 전용 수거함에 넣어 줘!',
+  ];
 
   return (
     <>
       <div className="garden">
         <Garden stage={me.garden_stage} mood={dim ? 'dim' : 'bright'} label="내 정원" />
-        <div className="party-on-garden">
-          {party.map((m) => <Remon key={m.id} art={m.art} shiny={m.is_shiny} mood={dim ? 'hurt' : 'normal'} label={m.name} />)}
-        </div>
+        <GardenPets party={party} dim={dim} lines={petLines} />
       </div>
 
       <div className="card">
