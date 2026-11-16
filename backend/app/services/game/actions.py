@@ -39,6 +39,9 @@ async def nearby_places(db: AsyncSession, lat: float, lng: float, radius: float,
     q = select(Place).where(Place.lat.between(lat - dlat, lat + dlat), Place.lng.between(lng - dlng, lng + dlng))
     if kinds:
         q = q.where(Place.kind.in_(kinds))
+    kx = math.cos(math.radians(lat))
+    q = q.order_by(((Place.lat - lat) * (Place.lat - lat)) + ((Place.lng - lng) * kx) * ((Place.lng - lng) * kx)) \
+         .limit(limit * 2)
     rows = [(p, haversine(lat, lng, p.lat, p.lng)) for p in (await db.execute(q)).scalars()]
     rows = [r for r in rows if r[1] <= radius]
     rows.sort(key=lambda r: r[1])
@@ -83,7 +86,7 @@ async def on_scan(db: AsyncSession, user: User, res: ClassifyResult, log: Classi
     since = now() - timedelta(days=7)
     recent = (await db.execute(select(ClassifyLog.phash).where(
         ClassifyLog.user_id == user.id, ClassifyLog.id != log.id, ClassifyLog.created_at >= since,
-        ClassifyLog.category.is_not(None)))).scalars()
+        ClassifyLog.category.is_not(None), ClassifyLog.judged_by != "user"))).scalars()
     if any(images.hamming(log.phash, h) <= 6 for h in recent if h):
         out["duplicate"] = True
         return out

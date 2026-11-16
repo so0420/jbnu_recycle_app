@@ -52,9 +52,12 @@ async def verify(request: Request, photo: UploadFile = File(...), lat: float = F
         raise HTTPException(400, "사진을 읽을 수 없어요. 다시 찍어 주세요")
     ph = images.phash(img)
     taken = images.exif_taken_at(raw)
-    if taken is None and taken_ms:
+    if taken is None and taken_ms and 0 < taken_ms < 4_102_444_800_000:
         # 앱이 사진을 다시 저장하면서 EXIF 가 빠지므로, 기기가 알려 준 파일 시각을 대신 쓴다
-        taken = datetime.fromtimestamp(taken_ms / 1000, TZ).replace(tzinfo=None)
+        try:
+            taken = datetime.fromtimestamp(taken_ms / 1000, TZ).replace(tzinfo=None)
+        except (ValueError, OverflowError, OSError):
+            taken = None
     uid = user.id
 
     def new_v() -> Verification:

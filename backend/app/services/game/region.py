@@ -81,9 +81,13 @@ async def weight(db: AsyncSession, unit: str) -> float:
 
 async def state(db: AsyncSession, unit: str) -> RegionState:
     ws = week_start()
-    from app.services.game.economy import ensure_row
-    return await ensure_row(db, RegionState, (ws, unit), week_start=ws, unit=unit,
-                            cleanliness=float(cfg()["start"]), verifs=0)
+    row = await db.get(RegionState, (ws, unit))
+    if row is not None:
+        return row
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+    stmt = mysql_insert(RegionState).values(week_start=ws, unit=unit, cleanliness=float(cfg()["start"]), verifs=0)
+    await db.execute(stmt.on_duplicate_key_update(unit=stmt.inserted.unit))
+    return await db.get(RegionState, (ws, unit), populate_existing=True)
 
 
 async def active_unit_count(db: AsyncSession) -> int:

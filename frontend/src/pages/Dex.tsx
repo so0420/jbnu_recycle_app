@@ -13,7 +13,7 @@ interface DexRes {
 export default function Dex() {
   const [d, setD] = useState<DexRes | null>(null);
   const [tab, setTab] = useState<'m' | 'i' | 's'>('m');
-  useEffect(() => { get<DexRes>('/dex').then(setD); }, []);
+  useEffect(() => { get<DexRes>('/dex').then(setD).catch(() => setD({ monsters: [], items: [], stamps: [] })); }, []);
   if (!d) return <div className="splash">불러오는 중…</div>;
   const mHave = d.monsters.filter((m) => m.have).length;
   const iHave = d.items.filter((i) => i.have).length;

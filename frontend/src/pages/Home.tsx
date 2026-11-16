@@ -18,8 +18,8 @@ export default function Home() {
     void refresh();
     get<{ monsters: Monster[] }>('/monsters').then((r) =>
       setParty(r.monsters.filter((m) => m.slot !== null).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0))),
-    );
-    get<unknown[]>('/capsules').then((r) => setCaps(r.length));
+    ).catch(() => {});
+    get<unknown[]>('/capsules').then((r) => setCaps(r.length)).catch(() => {});
     get<MissionsRes>('/missions').then((r) =>
       setClaimable(r.unlocked ? [...r.daily, ...r.weekly].filter((m) => !m.claimed && m.progress >= m.goal).length : 0),
     );

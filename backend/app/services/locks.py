@@ -20,7 +20,12 @@ def _uid(user: User | int) -> int:
 
 async def lock_user(db: AsyncSession, user: User | int) -> User:
     q = select(User).where(User.id == _uid(user)).with_for_update().execution_options(populate_existing=True)
-    return (await db.execute(q)).scalars().one()
+    u = (await db.execute(q)).scalars().one()
+    if u.deleted_at is not None:
+        from fastapi import HTTPException
+        await db.rollback()
+        raise HTTPException(401, "다시 로그인해 주세요")
+    return u
 
 
 async def refresh_locked(db: AsyncSession, obj, lock: bool = True):

@@ -73,7 +73,7 @@ export default function Verify() {
       fd.append('lng', String(f.lng));
       fd.append('accuracy', String(Math.round(f.accuracy)));
       fd.append('idempotency_key', uuid());
-      fd.append('taken_ms', String(file.lastModified || Date.now()));
+      if (file.lastModified > 0) fd.append('taken_ms', String(file.lastModified));
       const r = await upload<VerifyRes>('/verify', fd);
       setRes(r);
       if (r.result === 'success') void refresh();

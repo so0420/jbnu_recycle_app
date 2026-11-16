@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ART_CSS, ART_DEFS_SVG } from './art';
 import App from './App';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { StoreProvider } from './lib/store';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
@@ -14,6 +16,13 @@ document.body.prepend(defs);
 const style = document.createElement('style');
 style.textContent = ART_CSS;
 document.head.appendChild(style);
+
+if (Capacitor.isNativePlatform()) {
+  void CapApp.addListener('backButton', ({ canGoBack }) => {
+    if (canGoBack && window.location.pathname !== '/') window.history.back();
+    else void CapApp.minimizeApp();
+  });
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

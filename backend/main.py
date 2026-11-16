@@ -95,7 +95,9 @@ async def apk():
     if not f.is_file():
         from fastapi import HTTPException
         raise HTTPException(404, "아직 앱 파일이 없어요")
-    return FileResponse(f, media_type="application/vnd.android.package-archive", filename="recycle.apk")
+    # 새 버전을 올리면 바로 받게 Cloudflare·브라우저 캐시를 막는다
+    return FileResponse(f, media_type="application/vnd.android.package-archive", filename="recycle.apk",
+                        headers={"Cache-Control": "no-store, max-age=0"})
 
 
 # ---- 프론트(SPA) 서빙: 빌드 결과가 있으면 같은 주소에서 제공 ----

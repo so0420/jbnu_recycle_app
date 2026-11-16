@@ -37,7 +37,7 @@ export default function Login() {
       </div>
       <div className="center col" style={{ gap: 4 }}>
         <h1>리사이클</h1>
-        <p className="muted">제대로 버린 쓰레기가 리몬이 되는 곳 · 전주</p>
+        <p className="muted">제대로 버린 쓰레기가 리몬이 되는 곳</p>
       </div>
       <form className="card pop" onSubmit={submit}>
         <div className="field">

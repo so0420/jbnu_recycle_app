@@ -34,7 +34,10 @@ async def raid_status(user: User = Depends(auth.current_user), db: AsyncSession 
 async def attempt(user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
     user = await locks.lock_user(db, user)
     r = await raid_svc.attempt(db, user)
+    raid_id = r.pop("raid_id", None)
     await db.commit()
+    if r["killed"] and raid_id:
+        await raid_svc.pay_kill_rewards(raid_id)
     return r
 
 

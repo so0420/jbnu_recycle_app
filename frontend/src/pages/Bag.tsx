@@ -9,7 +9,7 @@ interface BagRes { capacity: number; expire_days: number; items: { id: number; c
 
 export default function Bag() {
   const [bag, setBag] = useState<BagRes | null>(null);
-  useEffect(() => { get<BagRes>('/bag').then(setBag); }, []);
+  useEffect(() => { get<BagRes>('/bag').then(setBag).catch(() => setBag({ capacity: 0, expire_days: 7, items: [] })); }, []);
   if (!bag) return <div className="splash">불러오는 중…</div>;
   return (
     <>

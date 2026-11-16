@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { PageHead } from '../components/common';
 import { get } from '../lib/api';
 import { STAGE_COLORS } from '../lib/labels';
-import { useStore } from '../lib/store';
+import { errMsg, useStore } from '../lib/store';
 
 interface Row { unit: string; name: string; sido: string; cleanliness: number; verifs: number; stage: { key: string; name: string }; rank: number | null }
 interface Standings { mode: string; total: number; rows: Row[]; mine: Row | null }
@@ -28,13 +28,14 @@ function RankRow({ r, mine }: { r: Row; mine: boolean }) {
 }
 
 export default function Regions() {
-  const { me } = useStore();
+  const { me, toast } = useStore();
   const [st, setSt] = useState<Standings | null>(null);
   const [feed, setFeed] = useState<Ev[]>([]);
   const mine = me?.region?.unit ?? null;
 
   useEffect(() => {
-    get<Standings>(`/regions${mine ? `?mine=${encodeURIComponent(mine)}` : ''}`).then(setSt);
+    get<Standings>(`/regions${mine ? `?mine=${encodeURIComponent(mine)}` : ''}`).then(setSt)
+      .catch((e) => { toast(errMsg(e), 'err'); setSt({ mode: '', total: 0, rows: [], mine: null }); });
     if (mine) get<Ev[]>(`/regions/${encodeURIComponent(mine)}/feed`).then(setFeed);
   }, [mine]);
 

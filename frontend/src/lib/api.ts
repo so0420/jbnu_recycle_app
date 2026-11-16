@@ -15,7 +15,7 @@ async function handle<T>(r: Response): Promise<T> {
     const b = await r.json();
     if (typeof b.detail === 'string') { msg = b.detail; hasDetail = true; }
     else if (Array.isArray(b.detail) && b.detail[0]?.msg) msg = '입력값을 확인해 주세요';
-    else if (b.error) { msg = String(b.error); hasDetail = true; }
+    else if (b.error && r.status !== 429) { msg = String(b.error); hasDetail = true; }
   } catch {
     /* 본문 없음 */
   }

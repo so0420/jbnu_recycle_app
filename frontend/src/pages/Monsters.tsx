@@ -34,7 +34,7 @@ function Exchange() {
       <h3>재료 교환</h3>
       <p className="tiny muted">재료 3개 → 다른 재료 1개, 코인 5 → 재료 1개 (기본 재료끼리만)</p>
       <div className="row wrap" style={{ gap: 6 }}>
-        <select aria-label="낼 것" value={src} onChange={(e) => setSrc(e.target.value)}>
+        <select aria-label="낼 것" value={src} onChange={(e) => { const v = e.target.value; setSrc(v); if (v === dst) setDst(BASE.find((k) => k !== v) ?? 'plastic'); }}>
           {BASE.map((k) => <option key={k} value={k}>{MAT_NAMES[k]} ({me.materials[k]})</option>)}
           <option value="coins">코인 ({me.coins})</option>
         </select>
@@ -54,7 +54,7 @@ export default function Monsters() {
   const { me } = useStore();
   const [list, setList] = useState<Monster[]>([]);
   useEffect(() => {
-    get<{ monsters: Monster[] }>('/monsters').then((r) => setList(r.monsters));
+    get<{ monsters: Monster[] }>('/monsters').then((r) => setList(r.monsters)).catch(() => setList([]));
   }, []);
   return (
     <>

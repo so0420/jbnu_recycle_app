@@ -138,25 +138,46 @@ async def attempt(db: AsyncSession, user: User) -> dict:
     if raid.hp <= 0 and not raid.killed_at:
         raid.hp = 0
         raid.killed_at = now()
-        killed = True
-        await _kill_rewards(db, raid, unit)
-    return {"damage": dmg, "boss_hp": raid.hp, "boss_max_hp": raid.max_hp, "killed": killed, "free": used_free,
+        killed = True          # 보상은 이 트랜잭션이 커밋된 뒤 pay_kill_rewards 로 따로 지급
+    return {"raid_id": raid.id, "damage": dmg, "boss_hp": raid.hp, "boss_max_hp": raid.max_hp, "killed": killed,
+            "free": used_free,
             "battle": {"units": res.units, "log": res.log, "rounds": res.rounds, "wiped": res.wiped},
             "reward": reward}
 
 
-async def _kill_rewards(db: AsyncSession, raid: Raid, unit: str) -> None:
+async def pay_kill_rewards(raid_id: int) -> None:
+    """처치 보상: 공격 트랜잭션과 따로, 참여자별로 잠금을 짧게 잡고 한 번만 지급한다."""
+    from sqlalchemy.exc import IntegrityError
+    from app.database.session import AsyncSessionLocal
+    from app.models import EconomyEvent, JobLog
+    from app.services import locks
     cfg = data.economy()["raid"]
-    uids = {r for (r,) in (await db.execute(select(RaidAttempt.user_id).where(RaidAttempt.raid_id == raid.id)))}
-    for uid in uids:
-        u = await db.get(User, uid)
-        if u is None:
-            continue
-        await economy.add_resource(db, u, "crystals", cfg["kill_crystals"], "raid_kill", str(raid.id))
-        types = [data.line(m.species)["type"] for m in await monsters.party(db, u)]
-        cap_type = next((t for t in types if t in data.BASE_TYPES), "plastic")
-        await monsters.grant_capsule(db, u, cap_type, "raid_kill")
-    await region.change(db, unit, data.economy()["region"]["raid_kill_restore"], "raid_kill")
+    async with AsyncSessionLocal() as db:
+        db.add(JobLog(name="raid_kill", key=str(raid_id)))
+        try:
+            await db.commit()               # 이미 지급했으면 여기서 멈춘다
+        except IntegrityError:
+            return
+        raid = await db.get(Raid, raid_id)
+        uids = sorted({r for (r,) in (await db.execute(
+            select(RaidAttempt.user_id).where(RaidAttempt.raid_id == raid_id)))})
+        unit = raid.unit
+    for uid in uids:                         # 사용자마다 짧은 트랜잭션 (잠금 순서 문제 없음)
+        async with AsyncSessionLocal() as db:
+            u = await locks.lock_user(db, uid)
+            if u.deleted_at is not None:
+                await db.rollback()
+                continue
+            u.crystals += cfg["kill_crystals"]
+            db.add(EconomyEvent(user_id=u.id, resource="crystals", delta=cfg["kill_crystals"], reason="raid_kill",
+                                ref=str(raid_id)))
+            types = [data.line(m.species)["type"] for m in await monsters.party(db, u)]
+            cap_type = next((t for t in types if t in data.BASE_TYPES), "plastic")
+            await monsters.grant_capsule(db, u, cap_type, "raid_kill")
+            await db.commit()
+    async with AsyncSessionLocal() as db:
+        await region.change(db, unit, data.economy()["region"]["raid_kill_restore"], "raid_kill")
+        await db.commit()
 
 
 async def board(db: AsyncSession, raid: Raid, limit: int = 10) -> list[dict]:

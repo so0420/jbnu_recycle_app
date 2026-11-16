@@ -11,7 +11,14 @@ from app.services.game import data
 
 
 async def ensure_row(db: AsyncSession, model, pk: tuple, **values):
-    """동시 요청에도 안전한 get-or-create: INSERT IGNORE 후 최신 값으로 다시 읽는다."""
+    """동시 요청에도 안전한 get-or-create.
+
+    이미 이 세션에 올라온 행이면 그대로 돌려준다(아직 flush 안 된 변경을 덮어쓰지 않게).
+    DB 에 있으면 그 행을, 없을 때만 INSERT IGNORE 로 만든다.
+    """
+    row = await db.get(model, pk)
+    if row is not None:
+        return row
     await db.execute(mysql_insert(model).values(**values).prefix_with("IGNORE"))
     return await db.get(model, pk, populate_existing=True)
 

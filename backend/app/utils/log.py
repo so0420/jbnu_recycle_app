@@ -99,7 +99,6 @@ def setup_uvicorn_logging():
     target_loggers = [
         "uvicorn",
         "uvicorn.error",
-        "uvicorn.access",
         "uvicorn.asgi",
         "fastapi",
     ]
@@ -129,6 +128,12 @@ def setup_uvicorn_logging():
 
         uvicorn_logger.propagate = False
         uvicorn_logger.setLevel(logging.INFO)
+
+    # 접속 로그(주소·쿼리)는 남기지 않는다: 지도·인증 요청 주소에 위치 좌표가 들어가기 때문
+    access = logging.getLogger("uvicorn.access")
+    access.handlers = []
+    access.propagate = False
+    access.disabled = True
 
 
 # 기본 로거 인스턴스

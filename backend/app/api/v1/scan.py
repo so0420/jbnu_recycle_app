@@ -59,9 +59,11 @@ async def scan(request: Request, photo: UploadFile = File(...), user: User = Dep
     await reserve_ai(db, user)
     # AI 판정 동안에는 DB 잠금·트랜잭션을 잡고 있지 않는다
     res = await classifier.classify(db, images.to_b64_jpeg(img, settings.AI_IMAGE_EDGE))
-    if res.category is None and not res.candidates:
+    if res.s1 is None and res.s2 is None:
         await refund_ai(db, user)
-        raise HTTPException(503, "AI가 지금 바빠요. 잠시 뒤 다시 찍어 주세요")
+        raise HTTPException(409, "AI가 지금 바빠요. 잠시 뒤 다시 찍어 주세요")
+    if res.category is None and not res.candidates:
+        res.candidates = list(data.guides()["categories"])[:6]      # 2차도 확신이 없으면 사용자가 고르게
     ph = images.phash(img)
     user = await locks.lock_user(db, user)
     path = images.save(img, "scan")
