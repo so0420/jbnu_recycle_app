@@ -1,0 +1,70 @@
+# 분리배출 안내. 출처 확정 전 임시본: 환경부 「재활용품 분리배출 가이드라인」의 일반 원칙을 바탕으로 팀이 정리.
+# 전주시 세부 기준이 확정되면 method/caution 을 고친다.
+# category: AI 1차 분류 키. type: 게임 타입(재료). general 은 재활용 불가.
+
+categories:
+  pet_clear: {name: 투명 페트병, type: plastic, en: "Clear (transparent, colorless) PET beverage or water bottle"}
+  plastic:   {name: 플라스틱, type: plastic, en: "Other plastic container, cup, tray, lid or packaging (not film, not styrofoam)"}
+  styrofoam: {name: 스티로폼, type: plastic, en: "White styrofoam (expanded polystyrene) box, tray or packing block"}
+  can:       {name: 캔·고철, type: metal, en: "Aluminum or steel can, metal lid, aerosol can or small metal item"}
+  glass:     {name: 유리병, type: glass, en: "Glass bottle or glass jar"}
+  paper:     {name: 종이·박스, type: paper, en: "Paper, newspaper, book, paper bag or cardboard box"}
+  carton:    {name: 종이팩, type: paper, en: "Milk or juice paper carton, sterilized paper pack"}
+  vinyl:     {name: 비닐, type: vinyl, en: "Plastic film, plastic bag, snack or ramen wrapper, bubble wrap"}
+  battery:   {name: 폐건전지, type: volt, en: "Battery (AA, AAA, button cell) or small battery pack"}
+  clothes:   {name: 의류·섬유, type: fabric, en: "Clothing, shoes, bag, towel or other textile"}
+  general:   {name: 일반쓰레기, type: none, en: "Not recyclable: food waste, tissue, heavily contaminated item, ceramic, mixed material"}
+
+# 타입별 '올바른 습관' 질문 (스캔 사진에 함께 묻는다)
+habits:
+  plastic: {name: "라벨 떼고 헹군 상태", q: "Is the item empty and rinsed, with any label removed?"}
+  paper:   {name: "테이프·송장 떼고 펼친 상태", q: "Is the paper or box flattened with tape and shipping labels removed?"}
+  metal:   {name: "비우고 헹군 상태", q: "Is the can empty and free of food residue or foreign objects?"}
+  glass:   {name: "뚜껑 분리하고 비운 상태", q: "Is the glass bottle empty with its cap removed?"}
+  vinyl:   {name: "이물질 없는 깨끗한 상태", q: "Is the plastic film or wrapper clean, without food residue?"}
+  volt:    {name: "따로 모은 상태", q: "Is the battery separated from other trash?"}
+  fabric:  {name: "깨끗하고 마른 상태", q: "Is the clothing or textile clean and dry?"}
+
+clean_question: "Is the item visibly contaminated with food, liquid or dirt?"   # 예 = 더러움
+
+items:
+  - {label: pet_water, category: pet_clear, name: 생수병, method: "내용물을 비우고 라벨을 뗀 뒤 찌그러뜨려 뚜껑을 닫아 투명 페트병 전용 칸에 배출", caution: "라벨이 붙어 있으면 고품질 재활용이 어렵습니다"}
+  - {label: pet_soda, category: pet_clear, name: 무색 음료 페트병, method: "비우고 헹군 뒤 라벨 제거, 압착 후 투명 페트병으로 배출", caution: "색이 있는 페트병은 일반 플라스틱으로"}
+  - {label: pet_colored, category: plastic, name: 유색 페트병, method: "비우고 헹궈 라벨을 떼고 플라스틱으로 배출", caution: ""}
+  - {label: plastic_cup, category: plastic, name: 플라스틱 컵, method: "음료를 비우고 헹군 뒤 빨대·컵홀더를 분리해 플라스틱으로 배출", caution: "종이 컵홀더는 종이로"}
+  - {label: delivery_container, category: plastic, name: 배달 용기, method: "음식물을 비우고 기름기를 씻어 플라스틱으로 배출", caution: "기름때가 지워지지 않으면 일반쓰레기"}
+  - {label: shampoo_bottle, category: plastic, name: 샴푸·세제 용기, method: "내용물을 비우고 헹군 뒤 펌프를 분리해 플라스틱으로 배출", caution: "펌프 안의 스프링은 일반쓰레기"}
+  - {label: plastic_lid, category: plastic, name: 플라스틱 뚜껑, method: "용기와 같은 재질이면 플라스틱으로 배출", caution: ""}
+  - {label: egg_tray_plastic, category: plastic, name: 플라스틱 계란판, method: "이물질을 털어 플라스틱으로 배출", caution: ""}
+  - {label: styro_box, category: styrofoam, name: 스티로폼 상자, method: "테이프·운송장을 떼고 내용물을 비워 스티로폼으로 배출", caution: "색이 있거나 음식물이 밴 것은 일반쓰레기"}
+  - {label: styro_tray, category: styrofoam, name: 스티로폼 접시, method: "랩을 벗기고 깨끗이 씻어 스티로폼으로 배출", caution: "컵라면 용기처럼 음식물이 밴 것은 일반쓰레기"}
+  - {label: beverage_can, category: can, name: 음료 캔, method: "내용물을 비우고 헹군 뒤 가능하면 찌그러뜨려 캔으로 배출", caution: "담배꽁초 등 이물질을 넣지 마세요"}
+  - {label: food_can, category: can, name: 통조림 캔, method: "내용물을 비우고 헹궈 캔으로 배출", caution: "날카로운 뚜껑은 안쪽으로 접기"}
+  - {label: spray_can, category: can, name: 스프레이·부탄가스 캔, method: "내용물을 완전히 비우고 구멍을 뚫어 가스를 뺀 뒤 캔으로 배출", caution: "화재 위험이 있으니 반드시 비울 것"}
+  - {label: metal_scrap, category: can, name: 작은 고철·냄비, method: "이물질을 제거해 고철로 배출", caution: "큰 것은 대형폐기물 신고"}
+  - {label: soju_bottle, category: glass, name: 소주·맥주병, method: "내용물을 비우고 판매점에 반납하면 보증금 환불, 아니면 유리병으로 배출", caution: "깨지지 않게 배출"}
+  - {label: beverage_glass, category: glass, name: 음료 유리병, method: "뚜껑을 분리하고 비운 뒤 유리병으로 배출", caution: "뚜껑은 재질별로 따로"}
+  - {label: glass_jar, category: glass, name: 잼·소스 유리병, method: "내용물을 비우고 헹궈 뚜껑을 분리한 뒤 유리병으로 배출", caution: ""}
+  - {label: broken_glass, category: general, name: 깨진 유리, method: "신문지에 싸서 일반 종량제 봉투로 배출", caution: "판유리·거울·도자기도 재활용 불가"}
+  - {label: cardboard_box, category: paper, name: 택배 상자, method: "테이프·송장을 떼고 펼쳐서 종이로 배출", caution: "비에 젖지 않게"}
+  - {label: newspaper, category: paper, name: 신문·책, method: "비닐 코팅 표지와 스프링을 제거하고 묶어서 종이로 배출", caution: ""}
+  - {label: paper_bag, category: paper, name: 종이 쇼핑백, method: "끈·손잡이를 떼고 종이로 배출", caution: "코팅된 쇼핑백은 일반쓰레기"}
+  - {label: paper_cup, category: paper, name: 종이컵, method: "헹군 뒤 따로 모아 종이팩·종이컵 수거함 또는 종이로 배출", caution: ""}
+  - {label: receipt, category: general, name: 영수증, method: "일반 종량제 봉투로 배출", caution: "감열지는 재활용 불가"}
+  - {label: milk_carton, category: carton, name: 우유팩, method: "헹궈 말린 뒤 펼쳐서 종이팩 수거함 또는 주민센터에 배출", caution: "일반 종이와 섞지 마세요"}
+  - {label: juice_pack, category: carton, name: 멸균팩(두유·주스), method: "빨대를 빼고 헹궈 펼쳐서 종이팩으로 배출", caution: ""}
+  - {label: plastic_bag, category: vinyl, name: 비닐봉지, method: "이물질을 털고 모아서 비닐로 배출", caution: "음식물이 묻었으면 씻거나 일반쓰레기"}
+  - {label: snack_wrapper, category: vinyl, name: 과자·라면 봉지, method: "부스러기를 털고 비닐로 배출", caution: ""}
+  - {label: bubble_wrap, category: vinyl, name: 뽁뽁이(에어캡), method: "테이프를 떼고 비닐로 배출", caution: ""}
+  - {label: cling_wrap, category: general, name: 사용한 랩, method: "음식물이 묻은 랩은 일반 종량제 봉투로", caution: "깨끗하면 비닐로"}
+  - {label: aa_battery, category: battery, name: 건전지, method: "폐건전지 수거함(주민센터, 아파트)에 배출", caution: "일반쓰레기에 넣으면 화재·오염 위험"}
+  - {label: small_battery, category: battery, name: 보조배터리, method: "단자에 테이프를 붙여 폐건전지 수거함 또는 소형가전 수거로 배출", caution: "부풀었으면 별도 문의"}
+  - {label: fluorescent, category: battery, name: 형광등, method: "깨지지 않게 형광등 전용 수거함에 배출", caution: "LED 등은 소형가전으로"}
+  - {label: clothes, category: clothes, name: 헌옷, method: "깨끗이 세탁해 마른 상태로 의류수거함에 배출", caution: "젖거나 심하게 오염된 옷은 일반쓰레기"}
+  - {label: shoes, category: clothes, name: 신발, method: "짝을 맞춰 묶어서 의류수거함에 배출", caution: ""}
+  - {label: blanket, category: clothes, name: 이불·커튼, method: "의류수거함 기준에 따라 배출(받지 않으면 대형폐기물)", caution: "솜이불은 지역마다 기준이 다름"}
+  - {label: food_waste, category: general, name: 음식물 쓰레기, method: "물기를 빼고 음식물 전용 용기·봉투로 배출", caution: "뼈·껍데기 등 딱딱한 것은 일반쓰레기"}
+  - {label: tissue, category: general, name: 휴지·물티슈, method: "일반 종량제 봉투로 배출", caution: "물티슈는 플라스틱 섬유라 재활용 불가"}
+  - {label: ceramic, category: general, name: 도자기·사기그릇, method: "불연성 마대(특수규격 봉투)로 배출", caution: ""}
+  - {label: toothbrush, category: general, name: 칫솔, method: "여러 재질이 섞여 일반 종량제 봉투로 배출", caution: ""}
+  - {label: pizza_box_greasy, category: general, name: 기름 밴 피자 상자, method: "기름이 밴 부분은 일반쓰레기, 깨끗한 부분만 종이로", caution: ""}

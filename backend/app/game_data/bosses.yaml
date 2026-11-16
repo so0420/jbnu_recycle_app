@@ -1,0 +1,49 @@
+# 오염 괴물. 매주 월요일 순서대로 교체. 전투 중 능력치(레이드 공용 체력은 raid.py 에서 계산)
+order: [label_golem, slime, chimera, microplastic, styro_giant]
+
+bosses:
+  slime:
+    name: 음식물 범벅 슬라임
+    weak: plastic
+    atk: 60
+    def: 40
+    spd: 35
+    gimmick: pollution
+    habit: "용기는 헹궈서 버리기"
+    desc: "매 라운드 아군에게 오염을 1겹 묻힌다(겹당 공격력 −5%). 플라스틱 리몬의 '재생'으로 씻어 낼 수 있다."
+  label_golem:
+    name: 라벨 골렘
+    weak: glass
+    atk: 70
+    def: 70
+    spd: 25
+    gimmick: label_shield
+    habit: "라벨은 떼서 따로 버리기"
+    desc: "라벨 보호막이 있는 동안 받는 피해가 70% 줄어든다. 유리 리몬의 공격은 보호막을 2배로 깬다."
+  chimera:
+    name: 혼합배출 키메라
+    weak: rotate
+    atk: 65
+    def: 50
+    spd: 45
+    gimmick: rotate_weak
+    habit: "종류별로 나눠서 버리기"
+    desc: "3라운드마다 약점 타입이 바뀐다. 여러 타입을 골고루 키운 파티가 유리하다."
+  microplastic:
+    name: 미세플라스틱 떼
+    weak: vinyl
+    atk: 18
+    def: 20
+    spd: 50
+    gimmick: swarm
+    habit: "작은 플라스틱 조각도 분리하기"
+    desc: "작은 적 5마리. 살아 있는 수만큼 공격한다. 전체 공격과 휘감기가 잘 듣는다."
+  styro_giant:
+    name: 스티로폼 거인
+    weak: paper
+    atk: 75
+    def: 60
+    spd: 15
+    gimmick: slam
+    habit: "깨끗한 스티로폼만 재활용"
+    desc: "느리지만 3라운드마다 아군 전체를 내리친다. 금속 리몬의 도발과 종이 리몬의 보호막으로 버티자."

@@ -7,3 +7,11 @@ sqlalchemy[asyncio]==2.0.50
 asyncmy==0.2.11
 alembic==1.18.4
 slowapi==0.1.9
+python-multipart==0.0.20
+pillow==11.3.0
+numpy==2.3.4
+httpx==0.28.1
+openai==2.8.1
+pyjwt==2.10.1
+pyyaml==6.0.3
+tzdata==2025.2

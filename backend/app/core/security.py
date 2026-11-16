@@ -48,7 +48,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault(
             "Permissions-Policy",
-            "geolocation=(), microphone=(), camera=()",
+            "geolocation=(self), microphone=(), camera=(self)",
         )
 
         # HSTS 와 CSP 는 운영(또는 https 강제) 환경에서만 부착

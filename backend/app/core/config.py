@@ -89,9 +89,44 @@ class Settings(BaseSettings):
 
     # 보안 헤더 옵션
     HSTS_MAX_AGE: int = 31536000  # 1년
-    CSP_POLICY: str = "default-src 'self'"
+    CSP_POLICY: str = (
+        "default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
+        "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    )
+
+    # ---- App ----
+    PUBLIC_BASE_URL: str = "https://recycle.so4.kr"
+    FRONTEND_DIST: str = "../frontend/dist"
+    UPLOAD_DIR: str = "uploads"
+    TIMEZONE: str = "Asia/Seoul"
+
+    # ---- Auth ----
+    JWT_SECRET: str = "change-me"
+    JWT_EXPIRE_DAYS: int = 30
+    COOKIE_SECURE: bool = True
+    ADMIN_LOGIN_IDS: list[str] = Field(default_factory=list)
+
+    # ---- AI ----
+    SYSTEM_ONE_URL: str = "http://127.0.0.1:11001/v1/systemone"
+    SYSTEM_ONE_MODEL: str = "clef-flash"
+    SYSTEM_ONE_TIMEOUT: float = 40.0
+    AI_IMAGE_EDGE: int = 768
+    AI_TOP1_THRESHOLD: float = 0.60
+    AI_MARGIN_THRESHOLD: float = 0.15
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-6-luna"
+    OPENAI_DAILY_TOKEN_LIMIT: int = 10_000_000
+    OPENAI_TIMEOUT: float = 40.0
+
+    # ---- Game ----
+    REGION_MODE: Literal["dong", "zone"] = "zone"
+    ECONOMY_MULTIPLIER: float = 1.0
+    VERIFY_RADIUS_M: float = 50.0
+    VERIFY_MAX_ACCURACY_M: float = 100.0
 
     @field_validator(
+        "ADMIN_LOGIN_IDS",
         "CORS_ALLOW_ORIGINS",
         "CORS_ALLOW_METHODS",
         "CORS_ALLOW_HEADERS",

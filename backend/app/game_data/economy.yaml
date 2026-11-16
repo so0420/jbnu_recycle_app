@@ -1,0 +1,95 @@
+# 게임시스템.md v2 의 수치. ECONOMY_MULTIPLIER 는 재료·코인·경험치에 곱해진다(시연용).
+account_xp:
+  verify: [30, 15, 15]          # 하루 1·2·3번째 인증
+  dumpday_bonus: 10
+  scan: 5
+  scan_daily_cap: 5
+  weekly_goal: 50
+  raid_daily: 5
+  mission: 10
+  # 다음 레벨 필요 = base + step × Lv
+  need_base: 40
+  need_step: 20
+
+verify:
+  daily_reward_cap: 3
+  base_materials: 8
+  per_bag_item: 5
+  clean_bonus: 1
+  coins: 20
+  tickets: 2
+  dumpday_ticket: 1
+  special_materials: 6          # 폐건전지·의류 수거함
+  bag_expire_days: 7
+
+tickets:
+  cap: 10
+  free_raid_daily: 1
+
+capsule:
+  rare_rate: 0.25
+  clean_bonus_rate: 0.10        # 정산 품목이 전부 깨끗하면
+  pity: 5                       # 5번째는 희귀 확정
+  shiny_rate: 0.02
+  shiny_clean_rate: 0.04
+  max_stars: 5
+  dup_overflow_materials: 30
+
+levelup:
+  mat_base: 3                   # 재료 = mat_base + Lv
+  coin_per_level: 5             # 코인 = coin_per_level × Lv
+
+evolve:
+  - {to_stage: 2, level: 10, materials: 20, habits: 5, crystals: 0}
+  - {to_stage: 3, level: 20, materials: 50, habits: 15, crystals: 1}
+
+exchange:
+  material_ratio: 3             # 재료 3 → 다른 재료 1
+  coin_per_material: 5          # 코인 5 → 재료 1
+
+expedition:
+  hours: 12
+  materials: 2
+  coins: 15
+
+garden:                          # 정원 레벨 해금
+  expedition: 2
+  missions: 3
+  raid: 5
+  exchange: 7
+  bag10: 7
+  expedition2: 10
+  bag15: 10
+
+region:
+  start: 600
+  min: 50
+  max: 1000
+  daily_decay: 25
+  target_restore: 40
+  w_min: 0.5
+  w_max: 3.0
+  crisis_below: 200
+  crisis_restore: 1.5
+  raid_kill_restore: 150
+
+raid:
+  hp_per_active_user: 0         # 0 이면 raid.py 의 기본 계산 사용
+  min_active: 3
+  reward_coins_per_attempt: 5
+  reward_materials_per_attempt: 1
+  kill_crystals: 1
+
+missions:
+  daily:
+    - {id: scan2, name: "쓰레기 2번 스캔하기", goal: 2, field: scan_count}
+    - {id: raid1, name: "레이드 1번 도전하기", goal: 1, field: raid_count}
+    - {id: levelup1, name: "리몬 레벨업 1번", goal: 1, field: levelup_count}
+    - {id: exped1, name: "탐사 보내기", goal: 1, field: expedition_sent}
+  daily_reward: {coins: 30, xp: 10}
+  daily_all_bonus_tickets: 1
+  weekly:
+    - {id: verify3, name: "배출 인증 3번", goal: 3, reward: capsule}
+    - {id: types3, name: "서로 다른 종류 3가지 배출", goal: 3, reward: materials}
+    - {id: habit5, name: "올바른 습관 5번", goal: 5, reward: capsule}
+  weekly_materials: 30

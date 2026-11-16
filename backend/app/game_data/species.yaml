@@ -1,0 +1,72 @@
+# 리몬 진화 계열. art 키는 프론트 src/art 의 <id>_<stage> 와 같다.
+# 능력치는 1단계 Lv1 기본값. 실제 = 기본 × (1+0.06×(Lv−1)) × 단계배율 × 희귀도배율 × (1+0.05×별)
+roles:
+  tank:     {hp: 120, atk: 40, def: 60, spd: 30, skill: crush}
+  dealer:   {hp: 70,  atk: 80, def: 25, spd: 55, skill: shards}
+  healer:   {hp: 100, atk: 45, def: 40, spd: 45, skill: regen}
+  support:  {hp: 90,  atk: 45, def: 45, spd: 50, skill: wrap}
+  disrupt:  {hp: 85,  atk: 55, def: 35, spd: 60, skill: bind}
+  volt:     {hp: 85,  atk: 75, def: 30, spd: 65, skill: discharge}
+  fabric:   {hp: 110, atk: 50, def: 50, spd: 40, skill: patch}
+  spirit:   {hp: 120, atk: 70, def: 50, spd: 55, skill: cycle}
+
+stage_mult: [1.0, 1.5, 2.2]
+rarity_mult: {common: 1.0, rare: 1.1, epic: 1.25, legend: 1.45}
+level_cap: [10, 20, 30]
+
+# 상성: key 가 value 에게 1.5배
+type_beats: {metal: glass, glass: vinyl, vinyl: paper, paper: plastic, plastic: metal}
+
+skills:
+  crush:     {name: 찌그러뜨리기, desc: "2라운드 도발 + 받는 피해 30% 감소"}
+  shards:    {name: 파편 난사, desc: "적 전체에 공격력 80%, 치명 30%"}
+  regen:     {name: 재생, desc: "체력이 가장 낮은 아군 회복(공격력 150%) + 오염 제거"}
+  wrap:      {name: 겹겹이 포장, desc: "아군 전체에 보호막(공격력 100%)"}
+  bind:      {name: 휘감기, desc: "적 1명 1라운드 행동 불가 (보스는 속도 30% 감소)"}
+  discharge: {name: 방전, desc: "무작위 적에게 공격력 70%로 3번 연쇄 공격"}
+  patch:     {name: 덧대기, desc: "아군 전체 회복(공격력 60%) + 2라운드 방어 20% 증가"}
+  cycle:     {name: 순환, desc: "적 전체에 공격력 90% + 아군 전체 회복(공격력 40%)"}
+
+lines:
+  # ── 일반 ──
+  petring:    {type: plastic, rarity: common, role: healer,  names: [페트링, 페트롤, 페트라곤],
+               desc: "투명 페트병에서 태어났다. 라벨을 떼 주면 진화한다."}
+  boxbear:    {type: paper,   rarity: common, role: support, names: [박스곰, 큰박스곰, 골판지킹],
+               desc: "택배 상자 곰. 테이프를 떼고 펼쳐 주면 진화한다."}
+  candol:     {type: metal,   rarity: common, role: tank,    names: [캔돌이, 캔버스터, 강철캔기사],
+               desc: "헹군 캔을 좋아하는 든든한 앞줄 담당."}
+  glassbird:  {type: glass,   rarity: common, role: dealer,  names: [유리새, 크리스탈새, 글라스피닉스],
+               desc: "초록 유리병 새. 뚜껑을 분리해 주면 진화한다."}
+  vinylghost: {type: vinyl,   rarity: common, role: disrupt, names: [비닐리, 비닐뱀, 랩드래곤],
+               desc: "깨끗한 비닐만 먹는 둥실둥실 유령."}
+  # ── 희귀 ──
+  colapet:    {type: plastic, rarity: rare, role: healer,  names: [콜라 페트링, 콜라 페트롤, 콜라 페트라곤],
+               desc: "갈색 페트병 변종. 빨대를 늘 물고 다닌다."}
+  parcelbear: {type: paper,   rarity: rare, role: support, names: [택배곰, 큰택배곰, 택배킹],
+               desc: "송장 스티커를 훈장처럼 붙이고 다니는 박스곰 변종."}
+  tunacan:    {type: metal,   rarity: rare, role: tank,    names: [참치캔돌이, 참치캔버스터, 황금캔기사],
+               desc: "황금빛 참치캔. 물고기 꼬리 고리가 달려 있다."}
+  amberbird:  {type: glass,   rarity: rare, role: dealer,  names: [호박새, 호박크리스탈새, 앰버피닉스],
+               desc: "갈색 유리병 새. 햇빛에 비치면 호박색으로 빛난다."}
+  bubblewrap: {type: vinyl,   rarity: rare, role: disrupt, names: [뽁뽁이, 뽁뽁뱀, 에어캡드래곤],
+               desc: "누르면 뽁 소리가 나는 에어캡 유령."}
+  # ── 에픽 (특수 수거함에서 처음 인증하면 확정) ──
+  voltmouse:  {type: volt,   rarity: epic, role: volt,   names: [볼트쥐, 볼트여우, 볼트라이온],
+               desc: "폐건전지 수거함에서 만난 전기 쥐."}
+  fabricsheep: {type: fabric, rarity: epic, role: fabric, names: [솜뭉치, 털실양, 패브릭골렘],
+               desc: "의류수거함에서 만난 포근한 양."}
+  # ── 전설 (일반·희귀 10종 수집 시) ──
+  reverse:    {type: spirit, rarity: legend, role: spirit, names: [리버스], max_stage: 1,
+               desc: "모든 재활용을 잇는 순환의 정령."}
+
+# 캡슐에서 나오는 계열 (타입별)
+capsule_pool:
+  plastic: {common: petring, rare: colapet}
+  paper:   {common: boxbear, rare: parcelbear}
+  metal:   {common: candol, rare: tunacan}
+  glass:   {common: glassbird, rare: amberbird}
+  vinyl:   {common: vinylghost, rare: bubblewrap}
+  volt:    {epic: voltmouse}
+  fabric:  {epic: fabricsheep}
+
+starters: [petring, boxbear, candol]

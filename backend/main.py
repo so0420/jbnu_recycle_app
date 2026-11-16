@@ -4,15 +4,20 @@ from dotenv import load_dotenv
 # 직접 os.getenv 를 쓰는 모듈을 위해 가장 먼저 로드)
 load_dotenv()
 
+import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, Depends
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1 import router as api_router
-from app.web import router as web_router
+from app.services import scheduler
 
 from app.core.config import settings
 from app.core.security import setup_security
@@ -24,7 +29,9 @@ from app.utils.custom_exceptions import http_exception_handler, global_exception
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Application startup (env={settings.ENVIRONMENT})")
+    task = asyncio.create_task(scheduler.loop())
     yield
+    task.cancel()
     await engine.dispose()
     logger.info("Application shutdown - DB engine disposed")
 
@@ -52,19 +59,37 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 app.include_router(api_router, prefix="/api")
-app.include_router(web_router)
-
-
-@app.get("/hello-world")
-def hello_world():
-    return {"message": "Hello World!"}
 
 
 @app.get("/health")
 async def health(db: AsyncSession = Depends(get_db)):
-    """DB 연결 상태를 확인하는 헬스체크."""
+    """DB·AI 연결 상태를 확인하는 헬스체크."""
     await db.execute(text("SELECT 1"))
-    return {"status": "ok", "database": "ok"}
+    ai = "down"
+    try:
+        async with httpx.AsyncClient(timeout=3) as c:
+            r = await c.get(settings.SYSTEM_ONE_URL.split("/v1/")[0] + "/api/ps")
+            ai = "ok" if r.status_code == 200 else "down"
+    except httpx.HTTPError:
+        pass
+    return {"status": "ok", "database": "ok", "system_one": ai, "openai": bool(settings.OPENAI_API_KEY)}
+
+
+# ---- 프론트(SPA) 서빙: 빌드 결과가 있으면 같은 주소에서 제공 ----
+_dist = Path(settings.FRONTEND_DIST)
+if _dist.is_dir():
+    if (_dist / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa(full_path: str):
+        f = (_dist / full_path).resolve()
+        if full_path and f.is_file() and _dist.resolve() in f.parents:
+            return FileResponse(f)
+        if full_path.startswith("api/"):
+            from fastapi import HTTPException
+            raise HTTPException(404)
+        return FileResponse(_dist / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 if __name__ == "__main__":
