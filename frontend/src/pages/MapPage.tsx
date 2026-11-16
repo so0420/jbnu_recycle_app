@@ -128,8 +128,10 @@ export default function MapPage() {
     // 화면 안의 수는 모두 더하고, 말풍선은 겹치지 않게 큰 곳부터 놓는다
     setCount(rows.filter((c) => b.contains([c.lat, c.lng])).reduce((a, c) => a + c.n, 0));
     const placed: { x: number; y: number; w: number }[] = [];
+    const size = m.getSize();
     for (const c of [...rows].sort((a, b2) => b2.n - a.n)) {
       const pt = m.latLngToContainerPoint([c.lat, c.lng]);
+      if (pt.x < 0 || pt.y < 0 || pt.x > size.x || pt.y > size.y) continue;   // 화면 밖 묶음은 그리지 않는다
       const label = `${c.name} ${c.n.toLocaleString('ko-KR')}곳`;
       const w = label.length * 9 + 22;
       if (placed.some((p) => Math.abs(p.x - pt.x) < (p.w + w) / 2 && Math.abs(p.y - pt.y) < 30)) continue;
@@ -177,7 +179,7 @@ export default function MapPage() {
 
   return (
     <>
-      <PageHead title="수거장 지도" back={false} right={<span className="small muted">{count}곳</span>} />
+      <PageHead title="수거장 지도" back={false} right={<span className="small muted">{count.toLocaleString('ko-KR')}곳</span>} />
       <div className="filters" role="group" aria-label="종류">
         {KINDS.map((k) => (
           <button key={k.key} aria-pressed={kinds.includes(k.key)} onClick={() => toggle(k.key)}>
