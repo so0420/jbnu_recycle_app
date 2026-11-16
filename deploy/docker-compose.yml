@@ -19,6 +19,8 @@ services:
       - ./runtime/apk:/data/apk
     depends_on:
       - ollama
+    # 서버 메모리가 모자라면(OOM) 이 게임 서버가 가장 먼저 정리되게 한다 (다른 서비스 보호, 최대값 1000)
+    oom_score_adj: 1000
     restart: unless-stopped
     logging:
       driver: json-file
@@ -45,6 +47,7 @@ services:
     ports:
       - "127.0.0.1:11001:11434"
     mem_limit: 14g
+    oom_score_adj: 1000           # OOM 때 가장 먼저 정리 (메모리를 가장 많이 쓰는 AI 모델이 보통 먼저 죽는다)
     restart: unless-stopped
     logging:
       driver: json-file
