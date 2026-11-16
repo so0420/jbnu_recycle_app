@@ -1,0 +1,12 @@
+**/node_modules
+**/.venv
+**/__pycache__
+frontend/dist
+frontend/android
+backend/.env
+backend/uploads
+backend/app/logs
+deploy/runtime
+deploy/.env
+docs
+.git

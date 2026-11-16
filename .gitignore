@@ -60,3 +60,6 @@ docs/art/out/
 
 # deploy secrets
 deploy/.env
+
+# deploy runtime
+deploy/runtime/

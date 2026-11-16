@@ -1,0 +1,44 @@
+# 서버: ~/projects/recycle 에서  ./deploy/deploy.sh
+# 앱 127.0.0.1:11000 (nginx → recycle.so4.kr), AI 127.0.0.1:11001
+name: recycle
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: recycle-app
+    network_mode: host          # 호스트의 MariaDB(127.0.0.1:3306)·Ollama(127.0.0.1:11001)에 바로 접속
+    env_file: .env
+    environment:
+      FRONTEND_DIST: /app/frontend/dist
+      UPLOAD_DIR: /data/uploads
+      LOG_FILE_PATH: /data/logs/
+    volumes:
+      - ./runtime/uploads:/data/uploads
+      - ./runtime/logs:/data/logs
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: recycle-ollama
+    devices:
+      - /dev/dri
+      - /dev/kfd
+    group_add:
+      - "${RENDER_GID:-992}"
+      - "${VIDEO_GID:-44}"
+    environment:
+      OLLAMA_VULKAN: "1"
+      OLLAMA_IGPU_ENABLE: "1"
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_CONTEXT_LENGTH: "8192"
+    volumes:
+      - ./runtime/ollama:/root/.ollama
+    ports:
+      - "127.0.0.1:11001:11434"
+    mem_limit: 14g
+    restart: unless-stopped

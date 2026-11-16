@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>리몬 아트 미리보기</title>
+<style>
+body{margin:0;background:#EEF1EA;color:#1D231F;font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+.wrap{max-width:1360px;margin:0 auto;padding:24px 20px 60px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:19px;margin:28px 0 10px;border-bottom:1px solid #D3D9D0;padding-bottom:4px}
+p.note{margin:0;color:#5B655D;font-size:13px}
+.grid{display:grid;gap:10px}
+.g-remon{grid-template-columns:repeat(8,1fr)}
+.g-boss{grid-template-columns:repeat(5,1fr)}
+.g-garden{grid-template-columns:repeat(4,1fr)}
+.g-icon{grid-template-columns:repeat(12,1fr)}
+.card{background:#F9FAF7;border:1px solid #D3D9D0;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.card .art{width:100%;aspect-ratio:1/1}
+.g-garden .card .art{aspect-ratio:360/200}
+.card .art svg{width:100%;height:100%;display:block}
+.card span{font:11px/1.3 ui-monospace,Consolas,monospace;color:#5B655D;text-align:center;word-break:break-all}
+.pair{display:flex;gap:4px;width:100%}
+.pair .art{flex:1}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+<h1>리몬 아트 미리보기 (A 스티커)</h1>
+<p class="note">frontend/src/art 의 render* 함수 결과를 그대로 그린 페이지입니다. 리몬은 왼쪽 보통, 오른쪽 반짝이. 보스는 왼쪽 보통, 오른쪽 피격.</p>
+<h2>리몬 (보통 · 반짝이)</h2><div class="grid g-remon" id="remon"></div>
+<h2>기분 (hurt · happy)</h2><div class="grid g-remon" id="mood"></div>
+<h2>보스 (보통 · 피격)</h2><div class="grid g-boss" id="boss"></div>
+<h2>정원 (bright / dim)</h2><div class="grid g-garden" id="garden"></div>
+<h2>아이콘</h2><div class="grid g-icon" id="icons"></div>
+</div>
+<script>
+"use strict";
+var RCArt = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // frontend/src/art/index.ts
+  var index_exports = {};
+  __export(index_exports, {
+    ART_CSS: () => ART_CSS,
+    ART_DEFS_SVG: () => ART_DEFS_SVG,
+    BOSS_KEYS: () => BOSS_KEYS,
+    ICON_KEYS: () => ICON_KEYS,
+    LINE: () => LINE,
+    REMON_ART_KEYS: () => REMON_ART_KEYS,
+    REMON_LINE_TYPE: () => REMON_LINE_TYPE,
+    REMON_TYPES: () => REMON_TYPES,
+    TYPE_COLORS: () => TYPE_COLORS,
+    renderBoss: () => renderBoss,
+    renderGarden: () => renderGarden,
+    renderIcon: () => renderIcon,
+    renderRemon: () => renderRemon
+  });
+
+  // frontend/src/art/defs.ts
+  var ART_DEFS_SVG = '<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><filter id="rc-wob" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="rc-wob-s" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.3" xChannelSelector="R" yChannelSelector="G"/></filter>' + stk("rc-stk", 5, 3, 0.16) + stk("rc-stk-m", 3.5, 2.2, 0.15) + stk("rc-stk-s", 2.2, 1.4, 0.16) + "</defs></svg>";
+  function stk(id, r, dy, op) {
+    return `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%"><feMorphology in="SourceAlpha" operator="dilate" radius="${r}" result="d"/><feFlood flood-color="#FFFFFF" result="w0"/><feComposite in="w0" in2="d" operator="in" result="w"/><feOffset in="d" dx="0" dy="${dy}" result="o"/><feFlood flood-color="#000000" flood-opacity="${op}" result="s0"/><feComposite in="s0" in2="o" operator="in" result="s"/><feMerge><feMergeNode in="s"/><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  }
+  var ART_CSS = ".rc-bob,.rc-float,.rc-shake{transform-box:fill-box}.rc-bob{animation:rc-bob 2.6s ease-in-out infinite;transform-origin:50% 100%}.rc-float{animation:rc-float 3.2s ease-in-out infinite}.rc-shake{animation:rc-shake .35s linear 2;transform-origin:50% 100%}@keyframes rc-bob{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-3px) scale(1.01,.99)}}@keyframes rc-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}@keyframes rc-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}@media (prefers-reduced-motion:reduce){.rc-bob,.rc-float,.rc-shake{animation:none}}";
+
+  // frontend/src/art/core.ts
+  var LINE = "#2A2622";
+  var RED_EYE = "#E4473A";
+  var TYPE_COLORS = {
+    plastic: "#2C6BCB",
+    paper: "#A97A45",
+    metal: "#7B8391",
+    glass: "#2E7D4F",
+    vinyl: "#7A55B0",
+    volt: "#D9A400",
+    fabric: "#C2577A"
+  };
+  var REMON_TYPES = ["plastic", "paper", "metal", "glass", "vinyl", "volt", "fabric"];
+  var n = (v) => Math.round(v * 100) / 100;
+  function styler(pal2, k = 1) {
+    const sw = n(4.5 * k);
+    return (role, w) => {
+      if (role === "line")
+        return `fill="none" stroke="${LINE}" stroke-width="${n((w ?? 3.6) * k)}" stroke-linecap="round" stroke-linejoin="round"`;
+      if (role === "lightline")
+        return `fill="none" stroke="#FFFFFF" stroke-opacity=".85" stroke-width="${n((w ?? 5) * k)}" stroke-linecap="round"`;
+      if (role === "eye") return `fill="${LINE}"`;
+      if (role === "hi") return 'fill="#FFFFFF"';
+      if (role === "light") return 'fill="#FFFFFF" fill-opacity=".8"';
+      if (role === "cheek") return `fill="${pal2.cheek}" fill-opacity=".9"`;
+      if (role === "dark") return `fill="${pal2.dark}"`;
+      if (role === "spark") return `fill="#FFD447" stroke="${LINE}" stroke-width="${n(sw * 0.7)}" stroke-linejoin="round"`;
+      if (role.charAt(0) === "~") {
+        const r = role.slice(1);
+        return `fill="${pal2[r] ?? r}"`;
+      }
+      const sww = w !== void 0 ? n(w * k) : sw;
+      return `fill="${pal2[role] ?? role}" stroke="${LINE}" stroke-width="${sww}" stroke-linejoin="round"`;
+    };
+  }
+  function ctx(pal2, mood = "normal", k = 1) {
+    return { s: styler(pal2, k), p: pal2, mood };
+  }
+  function moodMouth(c, kind) {
+    if (c.mood === "hurt") return "wavy";
+    if (c.mood === "happy") return "open";
+    return kind;
+  }
+  function mouth(c, x, yb, k, kind) {
+    const s2 = c.s;
+    const lw = 3.6 * Math.max(k, 0.6);
+    const X = (d) => n(x + d * k);
+    const Y = (d) => n(yb + d * k);
+    switch (kind) {
+      case "open":
+        return `<path d="M${X(-7)} ${Y(-1)} Q${X(0)} ${Y(10)} ${X(7)} ${Y(-1)} Z" ${s2("eye")}/>`;
+      case "smirk":
+        return `<path d="M${X(-5)} ${Y(1)} Q${X(2)} ${Y(5)} ${X(8)} ${Y(-2)}" ${s2("line", lw)}/>`;
+      case "frown":
+        return `<path d="M${X(-6)} ${Y(5)} Q${X(0)} ${Y(-1)} ${X(6)} ${Y(5)}" ${s2("line", lw)}/>`;
+      case "wavy":
+        return `<path d="M${X(-8)} ${Y(3)} Q${X(-4)} ${Y(-1)} ${X(0)} ${Y(3)} Q${X(4)} ${Y(7)} ${X(8)} ${Y(3)}" ${s2("line", lw)}/>`;
+      case "flat":
+        return `<path d="M${X(-5)} ${Y(3)} L${X(5)} ${Y(3)}" ${s2("line", lw)}/>`;
+      default:
+        return `<path d="M${X(-6)} ${Y(0)} Q${X(0)} ${Y(6)} ${X(6)} ${Y(0)}" ${s2("line", lw)}/>`;
+    }
+  }
+  function face(c, x, y, o = {}) {
+    const s2 = c.s;
+    const k = o.k ?? 1;
+    const g = (o.gap ?? 19) * k;
+    const lw = 3.6 * Math.max(k, 0.6);
+    let out = "";
+    if (o.cheeks !== false) {
+      out += `<ellipse cx="${n(x - g - 11 * k)}" cy="${n(y + 12 * k)}" rx="${n(7 * k)}" ry="${n(4.2 * k)}" ${s2("cheek")}/>`;
+      out += `<ellipse cx="${n(x + g + 11 * k)}" cy="${n(y + 12 * k)}" rx="${n(7 * k)}" ry="${n(4.2 * k)}" ${s2("cheek")}/>`;
+    }
+    [-g, g].forEach((dx, i) => {
+      const ex = x + dx;
+      const side = i === 0 ? 1 : -1;
+      const X = (d) => n(ex + d * k);
+      const Y = (d) => n(y + d * k);
+      if (c.mood === "hurt") {
+        out += `<path d="M${n(ex - 5 * k * side)} ${Y(-7)} L${n(ex + 5 * k * side)} ${Y(0)} L${n(ex - 5 * k * side)} ${Y(7)}" ${s2("line", lw * 1.05)}/>`;
+        return;
+      }
+      if (c.mood === "happy") {
+        out += `<path d="M${X(-7)} ${Y(3)} Q${X(0)} ${Y(-9)} ${X(7)} ${Y(3)}" ${s2("line", lw * 1.05)}/>`;
+        return;
+      }
+      if (o.eye === "cool") {
+        out += `<path d="M${X(-7)} ${Y(-1)} A${n(7 * k)} ${n(8 * k)} 0 0 0 ${X(7)} ${Y(-1)} Z" ${s2("eye")}/>`;
+        out += `<path d="M${X(-8)} ${Y(-2)} L${X(8)} ${Y(-2)}" ${s2("line", 3.2 * Math.max(k, 0.6))}/>`;
+      } else {
+        out += `<ellipse cx="${n(ex)}" cy="${n(y)}" rx="${n(6.5 * k)}" ry="${n(8 * k)}" ${s2("eye")}/>`;
+        out += `<circle cx="${X(-2)}" cy="${Y(-3)}" r="${n(2.3 * k)}" ${s2("hi")}/>`;
+      }
+      if (o.brow === true) {
+        out += `<path d="M${n(ex - 8 * k * side)} ${Y(-14)} L${n(ex + 7 * k * side)} ${Y(-10)}" ${s2("line", 3.4 * Math.max(k, 0.6))}/>`;
+      } else if (o.brow === "sad") {
+        out += `<path d="M${n(ex - 8 * k * side)} ${Y(-10)} L${n(ex + 7 * k * side)} ${Y(-14)}" ${s2("line", 3 * Math.max(k, 0.6))}/>`;
+      }
+    });
+    if (o.mouth !== false) {
+      out += mouth(c, x, y + 11 * k, k, moodMouth(c, o.mouth ?? "smile"));
+    }
+    return out;
+  }
+  function star(s2, x, y, r) {
+    return `<path d="M${x} ${y - r} Q${x} ${y} ${x + r} ${y} Q${x} ${y} ${x} ${y + r} Q${x} ${y} ${x - r} ${y} Q${x} ${y} ${x} ${y - r} Z" ${s2("spark")}/>`;
+  }
+  function stars(s2, pts) {
+    return pts.map((p) => star(s2, p[0], p[1], p[2])).join("");
+  }
+  function scaleFrom(scale, inner, ox = 100, oy = 186) {
+    if (scale === 1) return inner;
+    return `<g transform="translate(${ox} ${oy}) scale(${scale}) translate(${-ox} ${-oy})">${inner}</g>`;
+  }
+  function mirror(inner, axis = 200) {
+    return `<g transform="translate(${axis} 0) scale(-1 1)">${inner}</g>`;
+  }
+  function rot(deg, cx, cy, inner) {
+    return `<g transform="rotate(${deg} ${cx} ${cy})">${inner}</g>`;
+  }
+  function tube(d, w, color, ol = 9) {
+    return `<path d="${d}" fill="none" stroke="${LINE}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${color}" stroke-width="${n(w - ol)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  function poly(pts, dx = 0, dy = 0, k = 1, fx = 1) {
+    return pts.map((p, i) => `${i ? "L" : "M"}${n(dx + p[0] * k * fx)} ${n(dy + p[1] * k)}`).join(" ") + " Z";
+  }
+  function fluff(cx, cy, rx, ry, nb, bump, rot0 = 0) {
+    let d = "";
+    const step = Math.PI * 2 / nb;
+    for (let i = 0; i < nb; i++) {
+      const a0 = rot0 + i * step;
+      const a1 = a0 + step;
+      const am = (a0 + a1) / 2;
+      const x0 = cx + rx * Math.cos(a0);
+      const y0 = cy + ry * Math.sin(a0);
+      const x1 = cx + rx * Math.cos(a1);
+      const y1 = cy + ry * Math.sin(a1);
+      const qx = cx + (rx + bump * 2) * Math.cos(am);
+      const qy = cy + (ry + bump * 2) * Math.sin(am);
+      if (i === 0) d += `M${n(x0)} ${n(y0)} `;
+      d += `Q${n(qx)} ${n(qy)} ${n(x1)} ${n(y1)} `;
+    }
+    return d + "Z";
+  }
+  function spiky(cx, cy, ro, ri, nb, rot0 = -Math.PI / 2) {
+    const pts = [];
+    for (let i = 0; i < nb * 2; i++) {
+      const a = rot0 + i * Math.PI / nb;
+      const r = i % 2 === 0 ? ro : ri;
+      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+    return poly(pts);
+  }
+  function leaf(s2, x, y, len, ang, role) {
+    const w = len * 0.36;
+    return `<g transform="translate(${n(x)} ${n(y)}) rotate(${n(ang)})"><path d="M0 0 Q${n(len * 0.45)} ${n(-w)} ${n(len)} 0 Q${n(len * 0.45)} ${n(w)} 0 0 Z" ${s2(role)}/><path d="M${n(len * 0.15)} 0 L${n(len * 0.7)} 0" ${s2("line", 2)}/></g>`;
+  }
+  function stickerSvg(inner, o = {}) {
+    const rx = o.groundRx ?? 44;
+    const ground = `<ellipse cx="100" cy="188" rx="${o.float ? n(rx * 0.8) : rx}" ry="6" fill="#000000" fill-opacity="${o.float ? 0.08 : 0.12}"/>`;
+    const cls = o.anim ?? (o.float ? "rc-float" : "rc-bob");
+    const label = o.label ? ` aria-label="${o.label}"` : "";
+    return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img"${label}>${ground}<g class="${cls}"><g filter="url(#rc-stk)"><g filter="url(#rc-wob)">${inner}</g></g></g></svg>`;
+  }
+
+  // frontend/src/art/remon.ts
+  var STAGE_SCALE = [1, 1, 1.05, 1.08];
+  var DEFAULT_SPARKS = [[40, 52, 9], [160, 64, 7], [150, 30, 5]];
+  var feet = (c, x1, x2, role = "acc2", y = 181) => `<ellipse cx="${x1}" cy="${y}" rx="12" ry="7" ${c.s(role)}/><ellipse cx="${x2}" cy="${y}" rx="12" ry="7" ${c.s(role)}/>`;
+  var pet = (c, st, rare) => {
+    const s2 = c.s;
+    let b = "";
+    if (st === 3) {
+      const wing = `<path d="M64 104 C34 76 10 90 15 122 C27 113 36 119 38 130 C46 119 56 123 62 134 Z" ${s2("body")}/><path d="M58 110 L28 101 M58 118 L30 119 M59 126 L42 129" ${s2("line", 2.6)}/>`;
+      b += wing + mirror(wing);
+    }
+    if (st === 2) {
+      b += `<path d="M62 120 Q44 124 40 106" ${s2("line", 4)}/><circle cx="40" cy="100" r="8" ${s2("acc2")}/>`;
+      b += `<path d="M138 120 Q158 114 162 96" ${s2("line", 4)}/><circle cx="162" cy="90" r="8" ${s2("acc2")}/>`;
+    }
+    b += feet(c, 80, 120);
+    if (rare) b += tube(st === 3 ? "M108 50 L120 40 Q123 37 129 38 L141 41" : "M106 44 L118 31 Q121 27 127 28 L139 30", 12, c.p.acc, 8);
+    b += `<path d="M86 56 C86 72 60 74 60 98 L60 160 Q60 177 77 177 L123 177 Q140 177 140 160 L140 98 C140 74 114 72 114 56 Z" ${s2("body")}/>`;
+    b += `<path d="M126 96 C132 104 133 112 133 122 L133 158 Q133 170 121 170 L117 170 Q126 165 126 154 Z" ${s2("dark")}/>`;
+    b += `<rect x="81" y="44" width="38" height="13" rx="4" ${s2("acc2")}/>`;
+    if (st === 3) b += `<path d="M84 46 L84 26 L92 35 L100 22 L108 35 L116 26 L116 46 Z" ${s2("acc2")}/>`;
+    else b += `<rect x="85" y="28" width="30" height="18" rx="5" ${s2("acc2")}/>`;
+    b += `<rect x="68" y="98" width="7" height="24" rx="3.5" ${s2("light")}/>`;
+    if (st === 1) b += `<rect x="60" y="130" width="80" height="24" ${s2("acc")}/>`;
+    if (st === 2) {
+      b += `<path d="M60 130 L116 130 L116 154 L60 154 Z" ${s2("acc")}/>`;
+      b += `<path d="M116 130 L150 119 L147 147 L116 154 Z" ${s2("acc")}/>`;
+    }
+    if (st === 3) b += `<rect x="70" y="132" width="5" height="30" rx="2.5" ${s2("light")}/><path d="M84 160 Q100 168 116 160" ${s2("lightline")}/>`;
+    b += face(c, 100, 108, st === 1 ? {} : st === 2 ? { brow: true, mouth: "open" } : { eye: "cool", mouth: "smirk" });
+    return b;
+  };
+  var box = (c, st, rare) => {
+    const s2 = c.s;
+    let b = "";
+    if (st >= 2) {
+      const arm = rot(st === 2 ? -30 : -12, 52, 118, `<rect x="22" y="108" width="36" height="22" rx="11" ${s2("body")}/><circle cx="28" cy="119" r="8" ${s2("acc2")}/>`);
+      b += arm + mirror(arm);
+    }
+    if (st === 2) {
+      const flap = `<path d="M56 70 L24 46 L52 30 L92 66 Z" ${s2("body")}/><path d="M56 62 L40 48" ${s2("line", 2.4)}/>`;
+      b += flap + mirror(flap);
+      b += `<path d="M68 66 L74 42 L126 42 L132 66 Z" ${s2("dark")}/><path d="M68 66 L74 42 L126 42 L132 66" ${s2("line", 3)}/>`;
+    }
+    b += feet(c, 78, 122);
+    const ear = `<g transform="rotate(-14 66 62)"><rect x="50" y="46" width="32" height="28" rx="7" ${s2("body")}/><rect x="58" y="53" width="16" height="14" rx="4" ${s2("acc2")}/></g>`;
+    b += ear + mirror(ear);
+    b += `<rect x="50" y="64" width="100" height="112" rx="9" ${s2("body")}/>`;
+    b += `<rect x="132" y="70" width="11" height="100" rx="5" ${s2("dark")}/>`;
+    if (st === 3) {
+      let d = "M50 86";
+      for (let i = 0; i < 8; i++) d += ` q6.25 ${i % 2 ? 5 : -5} 12.5 0`;
+      b += `<path d="${d}" ${s2("line", 3)}/>`;
+    } else b += `<path d="M50 86 L150 86" ${s2("line", 3)}/>`;
+    if (st === 1) b += `<rect x="90" y="64" width="20" height="22" ${s2("acc")}/>`;
+    if (st === 2) {
+      b += `<rect x="90" y="64" width="20" height="9" ${s2("acc")}/>`;
+      b += `<path d="M110 66 Q130 48 146 58 L140 66 Q126 60 110 73 Z" ${s2("acc")}/>`;
+    }
+    if (st === 3) {
+      const pad = `<path d="M50 70 L26 84 L32 108 L62 98 L62 70 Z" ${s2("acc")}/><path d="M30 94 L60 84" ${s2("line", 2.4)}/>`;
+      b += pad + mirror(pad);
+      b += `<path d="M62 150 L104 150 L104 172 L62 172 Z" ${s2("acc")}/><path d="M62 150 L83 162 L104 150" ${s2("line", 2.4)}/>`;
+      b += `<path d="M76 66 L74 40 L87 52 L100 34 L113 52 L126 40 L124 66 Z" ${s2("acc")}/><path d="M80 58 L120 58" ${s2("line", 2.4)}/>`;
+    }
+    if (rare) {
+      b += rot(
+        -6,
+        127,
+        159,
+        `<rect x="112" y="148" width="30" height="22" rx="2" fill="#FFFFFF" stroke="#2A2622" stroke-width="3.4" stroke-linejoin="round"/><rect x="114" y="150" width="26" height="5" fill="#E5553C"/><path d="M117 159 L117 167 M120 159 L120 167 M124 159 L124 167 M126 159 L126 167 M130 159 L130 167 M134 159 L134 167 M137 159 L137 167" stroke="#2A2622" stroke-width="1.6"/>`
+      );
+    } else if (st < 3) b += `<path d="M64 162 L72 149 L80 162 Z" ${s2("line", 2.6)}/>`;
+    b += `<ellipse cx="100" cy="132" rx="21" ry="15" ${s2("acc")}/>`;
+    b += `<ellipse cx="100" cy="126" rx="6.5" ry="4.8" ${s2("eye")}/>`;
+    b += mouth(c, 100, 134, 1.15, moodMouth(c, st === 1 ? "smile" : st === 2 ? "open" : "smirk"));
+    b += face(c, 100, 106, { gap: 24, mouth: false, brow: st === 2, eye: st === 3 ? "cool" : void 0 });
+    return b;
+  };
+  var fishTab = (c, cx, cy, k, ang) => rot(
+    ang,
+    cx,
+    cy,
+    `<path d="${poly([[12, 0], [24, -9], [22, 0], [24, 9]], cx, cy, k)}" ${c.s("fish")}/><ellipse cx="${cx}" cy="${cy}" rx="${n(15 * k)}" ry="${n(9 * k)}" ${c.s("fish")}/><circle cx="${n(cx - 8 * k)}" cy="${n(cy - 2 * k)}" r="${n(2.2 * k)}" ${c.s("eye")}/><path d="M${n(cx - 1 * k)} ${n(cy - 6 * k)} Q${n(cx + 3 * k)} ${cy} ${n(cx - 1 * k)} ${n(cy + 6 * k)}" ${c.s("line", 2.2)}/>`
+  );
+  var can = (c, st, rare) => {
+    const s2 = c.s;
+    let b = "";
+    const top = st === 1 ? 50 : st === 2 ? 52 : 62;
+    const x0 = st === 1 ? 62 : 56;
+    const x1 = 200 - x0;
+    const hw = (x1 - x0) / 2;
+    if (st === 2) {
+      const arm = tube("M62 118 Q40 118 34 100", 15, c.p.body) + `<circle cx="34" cy="92" r="12" ${s2("acc")}/><path d="M28 88 Q34 84 40 88" ${s2("lightline", 3)}/>`;
+      b += arm + mirror(arm);
+    }
+    if (st === 3) {
+      b += tube("M140 122 Q160 122 162 112", 15, c.p.body);
+      b += `<path d="M157 100 L157 52 L162 42 L167 52 L167 100 Z" ${s2("blade")}/><path d="M162 52 L162 94" ${s2("line", 2)}/>`;
+      b += `<rect x="148" y="98" width="28" height="8" rx="3" ${s2("acc2")}/><circle cx="162" cy="112" r="10" ${s2("acc2")}/>`;
+    }
+    b += feet(c, 80, 120);
+    if (st === 3) {
+      if (rare) b += fishTab(c, 108, top - 14, 1.15, -28);
+      else b += `<path d="M100 ${top - 4} C94 ${top - 26} 112 ${top - 36} 138 ${top - 32} C126 ${top - 26} 124 ${top - 20} 128 ${top - 12} C118 ${top - 14} 110 ${top - 10} 106 ${top - 2} Z" ${s2("acc")}/>`;
+    } else if (!rare) b += `<ellipse cx="111" cy="${top - 12}" rx="10" ry="6" ${s2("line", 3.6)}/><path d="M105 ${top - 6} L100 ${top}" ${s2("line", 3.6)}/>`;
+    b += `<rect x="${x0}" y="${top}" width="${x1 - x0}" height="${176 - top}" rx="12" ${s2("body")}/>`;
+    b += `<rect x="${x1 - 17}" y="${top + 12}" width="10" height="${170 - top - 12}" rx="5" ${s2("dark")}/>`;
+    b += `<ellipse cx="100" cy="${top + 2}" rx="${hw}" ry="10" ${s2("acc2")}/><ellipse cx="100" cy="${top + 2}" rx="${hw - 11}" ry="6" ${s2("dark")}/>`;
+    if (rare && st < 3) b += fishTab(c, 98, top - 3, 0.85, -10);
+    b += `<rect x="${x0}" y="124" width="${x1 - x0}" height="32" ${s2("acc")}/>`;
+    if (rare) b += `<path d="${poly([[-14, 0], [-4, -8], [10, -6], [16, 0], [10, 6], [-4, 8]], 96, 140)}" ${s2("~fish")}/><path d="M112 140 L120 133 L120 147 Z" ${s2("~fish")}/>`;
+    b += `<rect x="${x0 + 8}" y="${st === 3 ? top + 28 : top + 14}" width="8" height="${st === 3 ? 30 : 48}" rx="4" ${s2("light")}/>`;
+    if (st === 2) b += `<path d="M86 134 L100 146 L114 134" ${s2("lightline", 4)}/>`;
+    if (st === 3) {
+      b += `<rect x="${x0}" y="${top + 12}" width="${x1 - x0}" height="11" ${s2("acc2")}/>`;
+      b += [x0 + 10, 100, x1 - 10].map((x) => `<circle cx="${x}" cy="${top + 17.5}" r="2.4" ${s2("hi")}/>`).join("");
+    }
+    b += `<path d="M${x1 + 1} 88 L${x1 - 7} 95 L${x1 + 1} 102" ${s2("line", 3)}/>`;
+    b += face(c, 100, top + 46, st === 1 ? { gap: 17 } : st === 2 ? { gap: 18, brow: true, mouth: "open" } : { gap: 18, eye: "cool", mouth: "smirk" });
+    if (st === 3) {
+      b += `<circle cx="56" cy="142" r="30" ${s2("acc2")}/><circle cx="56" cy="142" r="20" ${s2("line", 2.6)}/>`;
+      b += `<path d="M44 128 L50 134 L46 140 M64 150 L70 156 M62 128 L66 136" ${s2("line", 2.4)}/>`;
+      b += `<path d="M38 132 Q42 122 52 118" ${s2("lightline", 4)}/><circle cx="56" cy="142" r="4" ${s2("body", 2.4)}/>`;
+    }
+    return b;
+  };
+  var glass = (c, st, rare) => {
+    const s2 = c.s;
+    let b = "";
+    if (st === 3) {
+      const wing = `<path d="M70 112 L30 66 L40 94 L18 92 L36 114 L20 128 L46 134 L34 150 L66 144 Z" ${s2("body")}/><path d="M64 118 L40 94 M62 128 L36 114 M62 136 L46 134" ${s2("line", 2.4)}/>`;
+      b += wing + mirror(wing, 204);
+      b += `<path d="M62 140 L18 150 L40 158 L14 172 L64 162 Z" ${s2("acc2")}/>`;
+    }
+    b += `<path d="M92 174 L92 186 M112 174 L112 186 M85 186 L99 186 M105 186 L119 186" ${s2("line", 3.4)}/>`;
+    if (st === 1) b += `<path d="M60 128 L24 106 L30 148 Z" ${s2("body")}/>`;
+    if (st === 2) {
+      b += `<path d="M62 122 L22 98 L42 122 Z" ${s2("body")}/><path d="M60 132 L14 128 L40 142 Z" ${s2("body")}/><path d="M62 142 L26 162 L50 140 Z" ${s2("body")}/>`;
+    }
+    if (st >= 2) {
+      const cr = st === 3 ? "acc2" : "body";
+      b += `<path d="M116 64 L142 30 L126 70 Z" ${s2(cr)}/><path d="M114 58 L128 22 L120 62 Z" ${s2(cr)}/>`;
+    }
+    const neckTop = st === 3 ? 40 : 46;
+    b += `<rect x="88" y="${neckTop}" width="32" height="${96 - neckTop}" rx="12" ${s2("body")}/>`;
+    if (st === 3) {
+      b += `<rect x="85" y="34" width="38" height="12" rx="5" ${s2("body")}/><ellipse cx="104" cy="37" rx="11" ry="3" ${s2("dark")}/>`;
+    } else if (rare) {
+      b += `<path d="M88 36 Q88 30 94 30 L114 30 Q120 30 120 36 L120 50 L116 55 L112 50 L108 55 L104 50 L100 55 L96 50 L92 55 L88 50 Z" ${s2("acc")}/>`;
+      b += `<path d="M93 36 L115 36" ${s2("lightline", 3)}/>`;
+    } else b += `<rect x="90" y="30" width="28" height="20" rx="5" ${s2("acc")}/>`;
+    b += `<circle cx="104" cy="130" r="50" ${s2("body")}/>`;
+    b += `<ellipse cx="139" cy="134" rx="8" ry="28" ${s2("dark")}/>`;
+    if (st >= 2) b += `<path d="M118 172 L128 156 L148 156 M84 176 L94 164 L108 168" ${s2("line", 2.4)}/>`;
+    if (st === 1) {
+      b += `<path d="M66 126 Q56 152 82 164 Q92 146 85 128 Z" ${s2("body")}/>`;
+      b += `<path d="M70 140 Q76 146 82 146 M72 151 Q78 156 84 155" ${s2("line", 2.4)}/>`;
+    } else {
+      b += `<path d="M68 124 L50 160 L64 154 L68 170 L88 148 L84 126 Z" ${s2("body")}/><path d="M70 136 L64 154 M78 140 L76 158" ${s2("line", 2.4)}/>`;
+    }
+    b += `<path d="M76 104 Q66 124 74 146" ${s2("lightline")}/>`;
+    b += `<rect x="94" y="${neckTop + 8}" width="5" height="24" rx="2.5" ${s2("light")}/>`;
+    b += face(c, 108, 114, st === 3 ? { gap: 17, mouth: false, eye: "cool" } : { gap: 17, mouth: false, brow: st === 2 });
+    b += `<path d="M101 128 L115 128 L108 138 Z" ${s2("acc2")}/>`;
+    if (c.mood !== "normal") b += mouth(c, 108, 141, 0.7, moodMouth(c, "smile"));
+    return b;
+  };
+  var bubbles = (c, pts) => pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="4.6" fill="#FFFFFF" fill-opacity=".6" stroke="${c.p.acc}" stroke-width="2.2"/><circle cx="${p[0] - 1.4}" cy="${p[1] - 1.4}" r="1.3" fill="#FFFFFF"/>`).join("");
+  var vinyl = (c, st, rare) => {
+    const s2 = c.s;
+    const B = c.p.body;
+    let b = "";
+    if (st === 1) {
+      b += tube("M72 66 C70 30 94 30 92 66", 15, B) + tube("M108 66 C106 30 130 30 128 66", 15, B);
+      b += `<path d="M58 62 L142 62 L150 158 Q140 172 128 162 Q116 176 100 164 Q84 176 72 162 Q60 172 50 158 Z" ${s2("body")}/>`;
+      b += `<path d="M134 84 L141 150 Q136 156 131 152 L126 86 Z" ${s2("dark")}/>`;
+      b += `<path d="M58 62 L142 62 L143 77 L57 77 Z" ${s2("acc")}/>`;
+      b += `<path d="M68 136 L77 125 M121 94 L127 107 M84 152 L91 145" ${s2("line", 2.4)}/>`;
+      if (rare) b += bubbles(c, [[70, 90], [86, 90], [102, 90], [118, 90], [132, 92], [72, 146], [104, 146], [120, 146], [136, 142]]);
+      b += face(c, 100, 112, { gap: 18 });
+      return b;
+    }
+    const big = st === 3;
+    if (big) {
+      const wing = `<path d="M80 110 C58 70 24 60 12 82 C26 84 30 94 24 106 C38 102 46 112 42 126 C54 120 64 126 66 136 Z" ${s2("body")}/><path d="M76 112 L28 84 M72 120 L36 110 M70 128 L48 126" ${s2("line", 2.4)}/>`;
+      b += wing + mirror(wing);
+      b += tube("M150 172 C178 172 184 152 172 140", 14, B);
+      b += `<path d="M166 142 L174 120 L184 144 Z" ${s2("acc")}/>`;
+    } else b += tube("M146 168 C170 172 178 160 170 150", 12, B);
+    const coil = (cy, rx, ry, w) => `<ellipse cx="100" cy="${cy}" rx="${rx}" ry="${ry}" ${s2("~dark")}/>` + tube(`M${100 - rx} ${cy} A${rx} ${ry} 0 1 0 ${100 + rx} ${cy} A${rx} ${ry} 0 1 0 ${100 - rx} ${cy} Z`, w, B);
+    const c1 = big ? [164, 56, 12, 24] : [164, 50, 11, 22];
+    const c2 = big ? [142, 40, 10, 22] : [144, 36, 9, 20];
+    b += coil(c1[0], c1[1], c1[2], c1[3]) + coil(c2[0], c2[1], c2[2], c2[3]);
+    b += tube(big ? "M114 136 C142 112 78 114 100 94" : "M112 138 C138 116 80 118 98 98", big ? 36 : 34, B);
+    b += `<path d="M108 128 Q118 122 120 114" ${s2("lightline", 4)}/>`;
+    b += `<path d="M58 170 L66 176 M134 176 L142 170 M72 152 L78 156" ${s2("line", 2.2)}/>`;
+    if (rare) {
+      const arc = (cy, rx, ry) => [25, 50, 75, 100, 125, 150].map((a) => [n(100 + rx * Math.cos(a * Math.PI / 180)), n(cy + ry * Math.sin(a * Math.PI / 180))]);
+      b += bubbles(c, arc(c1[0], c1[1], c1[2]).concat(arc(c2[0], c2[1], c2[2]), [[104, 116]], big ? [[40, 92], [52, 110], [160, 92], [148, 110]] : []));
+    }
+    if (big) b += tube("M76 62 C68 34 84 28 90 60", 13, B) + tube("M110 60 C116 28 132 34 124 62", 13, B);
+    else b += tube("M76 66 C74 44 90 44 90 66", 12, B) + tube("M110 66 C110 44 126 44 124 66", 12, B);
+    const hy = big ? 60 : 64, hx0 = big ? 62 : 66;
+    b += `<path d="M${hx0} ${hy} L${200 - hx0} ${hy} L${204 - hx0} ${hy + 36} Q${202 - hx0} 116 100 116 Q${hx0 - 2} 116 ${hx0 - 4} ${hy + 36} Z" ${s2("body")}/>`;
+    b += `<path d="M${190 - hx0} ${hy + 10} L${196 - hx0} ${hy + 40} Q${194 - hx0} 110 ${188 - hx0} 110 Z" ${s2("dark")}/>`;
+    b += `<path d="M${hx0} ${hy} L${200 - hx0} ${hy} L${201 - hx0} ${hy + 10} L${hx0 - 1} ${hy + 10} Z" ${s2("acc")}/>`;
+    b += face(c, 100, big ? 88 : 90, big ? { k: 0.9, gap: 18, eye: "cool", mouth: "smirk" } : { k: 0.85, gap: 18, brow: true });
+    return b;
+  };
+  var BOLT = [[0, 0], [18, -10], [12, -16], [32, -34], [24, -14], [30, -10], [6, 10]];
+  var battery = (c, x0, y0, y1, band) => {
+    const s2 = c.s;
+    const x1 = 200 - x0;
+    return `<path d="M${x0} ${y0 + 14} Q${x0} ${y0} ${x0 + 14} ${y0} L${x1 - 14} ${y0} Q${x1} ${y0} ${x1} ${y0 + 14} L${x1} ${y1 - 12} Q${x1} ${y1} ${x1 - 14} ${y1} L${x0 + 14} ${y1} Q${x0} ${y1} ${x0} ${y1 - 12} Z" ${s2("body")}/><rect x="${x1 - 14}" y="${y0 + 8}" width="8" height="${band - y0 - 14}" rx="4" ${s2("dark")}/><path d="M${x0} ${band} L${x1} ${band} L${x1} ${y1 - 12} Q${x1} ${y1} ${x1 - 14} ${y1} L${x0 + 14} ${y1} Q${x0} ${y1} ${x0} ${y1 - 12} Z" ${s2("acc")}/><path d="${poly([[-3, -8], [5, -8], [1, -1], [6, -1], [-4, 9], [-1, 1], [-6, 1]], 100, (band + y1) / 2)}" ${s2("body", 2.2)}/>`;
+  };
+  var volt = (c, st) => {
+    const s2 = c.s;
+    let b = "";
+    if (st === 1) {
+      const ear = `<circle cx="70" cy="68" r="18" ${s2("body")}/><circle cx="70" cy="68" r="9" ${s2("~ear")}/>`;
+      b += ear + mirror(ear);
+      b += `<path d="${poly(BOLT, 132, 160, 1.2)}" ${s2("body")}/>`;
+      b += feet(c, 82, 118, "acc");
+      b += `<rect x="88" y="52" width="24" height="16" rx="4" ${s2("acc2")}/>`;
+      b += battery(c, 66, 64, 176, 146);
+      b += `<rect x="74" y="74" width="6" height="40" rx="3" ${s2("light")}/>`;
+      const wh = `<path d="M62 114 L46 110 M62 121 L46 123" ${s2("line", 2.4)}/>`;
+      b += wh + mirror(wh);
+      b += face(c, 100, 104, { gap: 16 });
+      b += `<ellipse cx="100" cy="112" rx="3.4" ry="2.6" ${s2("eye")}/>`;
+      return b;
+    }
+    if (st === 2) {
+      const ear = `<path d="M70 80 L62 28 L98 66 Z" ${s2("body")}/><path d="M70 70 L66 44 L84 62 Z" ${s2("~ear")}/>`;
+      b += ear + mirror(ear);
+      b += `<path d="${poly(BOLT, 128, 164, 1.8)}" ${s2("body")}/><path d="${poly([[24, -14], [32, -34], [18, -22]], 128, 164, 1.8)}" ${s2("muz", 3)}/>`;
+      b += feet(c, 82, 118, "acc");
+      b += `<rect x="88" y="50" width="24" height="16" rx="4" ${s2("acc2")}/>`;
+      b += battery(c, 64, 62, 176, 148);
+      const tuft = `<path d="M66 108 L48 118 L56 122 L50 130 L66 130 Z" ${s2("muz")}/>`;
+      b += tuft + mirror(tuft);
+      b += `<rect x="72" y="74" width="6" height="40" rx="3" ${s2("light")}/>`;
+      b += face(c, 100, 100, { gap: 17, brow: true, mouth: "open" });
+      b += `<ellipse cx="100" cy="108" rx="3.4" ry="2.6" ${s2("eye")}/>`;
+      return b;
+    }
+    b += tube("M134 166 C162 170 170 150 162 134", 11, c.p.body);
+    b += `<path d="${poly(BOLT, 150, 138, 0.8)}" ${s2("acc", 3.4)}/>`;
+    b += battery(c, 66, 124, 178, 154);
+    b += `<ellipse cx="82" cy="180" rx="13" ry="8" ${s2("body")}/><ellipse cx="118" cy="180" rx="13" ry="8" ${s2("body")}/>`;
+    b += `<path d="${spiky(100, 84, 60, 46, 12)}" ${s2("acc")}/>`;
+    b += `<path d="${spiky(100, 84, 49, 40, 12, -Math.PI / 2 + Math.PI / 12)}" ${s2("dark", 0)} stroke="#2A2622" stroke-width="3" stroke-linejoin="round"/>`;
+    b += `<circle cx="72" cy="54" r="10" ${s2("body")}/><circle cx="128" cy="54" r="10" ${s2("body")}/>`;
+    b += `<rect x="89" y="36" width="22" height="16" rx="4" ${s2("acc2")}/>`;
+    b += `<circle cx="100" cy="86" r="38" ${s2("body")}/>`;
+    b += `<path d="M124 60 Q140 84 124 112 Q132 86 124 60 Z" ${s2("dark")}/>`;
+    b += `<ellipse cx="100" cy="106" rx="17" ry="11" ${s2("muz")}/>`;
+    b += face(c, 100, 82, { gap: 15, eye: "cool", mouth: false });
+    b += `<path d="M95 99 L105 99 L100 105 Z" ${s2("eye")}/>`;
+    b += mouth(c, 100, 106, 0.9, moodMouth(c, "smirk"));
+    b += `<circle cx="90" cy="108" r="1.4" ${s2("eye")}/><circle cx="110" cy="108" r="1.4" ${s2("eye")}/>`;
+    return b;
+  };
+  var stitchRect = (x, y, w, h) => `<rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" rx="3" fill="none" stroke="#2A2622" stroke-width="1.8" stroke-dasharray="4 4" stroke-linecap="round"/>`;
+  var button = (c, x, y, r, role) => `<circle cx="${x}" cy="${y}" r="${r}" ${c.s(role, 3)}/>` + [[-1, -1], [1, -1], [-1, 1], [1, 1]].map((d) => `<circle cx="${n(x + d[0] * r * 0.32)}" cy="${n(y + d[1] * r * 0.32)}" r="${n(r * 0.16)}" ${c.s("eye")}/>`).join("");
+  var fabric = (c, st) => {
+    const s2 = c.s;
+    let b = "";
+    if (st === 1) {
+      b += feet(c, 82, 118, "acc");
+      b += tube("M144 152 C166 158 172 136 158 134 C150 133 151 144 160 146", 9, c.p.acc, 5);
+      b += leaf(s2, 100, 82, 22, -140, "leaf") + leaf(s2, 100, 82, 22, -40, "leaf");
+      b += `<path d="${fluff(100, 130, 48, 44, 11, 6, 0.3)}" ${s2("body")}/>`;
+      b += `<path d="M136 112 Q146 132 134 156 Q140 132 136 112 Z" ${s2("dark")}/>`;
+      b += `<path d="M70 108 Q72 100 80 98" ${s2("lightline", 4)}/>`;
+      b += face(c, 100, 126, { gap: 17 });
+      return b;
+    }
+    if (st === 2) {
+      [70, 88, 118, 136].forEach((x) => {
+        b += `<rect x="${x - 6}" y="156" width="12" height="28" rx="6" ${s2("leg")}/>`;
+      });
+      b += tube("M146 142 C170 146 174 124 162 120 C154 118 154 128 162 130", 9, c.p.acc, 5);
+      b += `<circle cx="110" cy="126" r="44" ${s2("acc")}/>`;
+      b += `<path d="M78 100 Q112 90 148 116 M70 122 Q106 112 152 138 M76 148 Q110 136 142 160 M100 84 Q84 118 98 168 M128 88 Q118 120 132 162" ${s2("line", 2.2)}/>`;
+      b += `<path d="M84 96 Q90 88 100 86" ${s2("lightline", 4)}/>`;
+      b += rot(-24, 46, 100, `<ellipse cx="46" cy="100" rx="13" ry="7" ${s2("skin")}/>`);
+      b += rot(24, 92, 98, `<ellipse cx="92" cy="98" rx="13" ry="7" ${s2("skin")}/>`);
+      b += `<ellipse cx="68" cy="112" rx="24" ry="27" ${s2("skin")}/>`;
+      b += `<path d="${fluff(68, 86, 19, 10, 7, 4)}" ${s2("body")}/>`;
+      b += face(c, 68, 114, { k: 0.8, gap: 13 });
+      return b;
+    }
+    b += `<rect x="62" y="158" width="32" height="26" rx="7" ${s2("body")}/><rect x="106" y="158" width="32" height="26" rx="7" ${s2("body")}/>`;
+    b += `<rect x="22" y="86" width="32" height="66" rx="14" ${s2("acc2")}/><rect x="146" y="86" width="32" height="66" rx="14" ${s2("acc3")}/>`;
+    b += `<path d="M26 120 L50 120 M150 120 L174 120" stroke="#2A2622" stroke-width="1.8" stroke-dasharray="4 4"/>`;
+    b += `<rect x="46" y="70" width="108" height="98" rx="16" ${s2("body")}/>`;
+    b += `<rect x="134" y="80" width="12" height="78" rx="6" ${s2("dark")}/>`;
+    b += rot(-4, 72, 92, `<rect x="50" y="74" width="44" height="38" rx="4" ${s2("acc")}/>${stitchRect(50, 74, 44, 38)}`);
+    b += rot(5, 130, 146, `<rect x="110" y="128" width="40" height="36" rx="4" ${s2("acc2")}/>${stitchRect(110, 128, 40, 36)}`);
+    b += rot(-6, 72, 148, `<rect x="56" y="132" width="32" height="32" rx="4" ${s2("acc3")}/>${stitchRect(56, 132, 32, 32)}`);
+    b += button(c, 116, 92, 8, "acc2") + button(c, 136, 106, 6, "acc");
+    b += `<path d="M122 30 L150 22" stroke="#2A2622" stroke-width="8" stroke-linecap="round"/><path d="M122 30 L150 22" stroke="#E6E9EE" stroke-width="3.6" stroke-linecap="round"/><ellipse cx="146" cy="23" rx="2.6" ry="1.4" fill="#2A2622" transform="rotate(-16 146 23)"/>`;
+    b += `<rect x="64" y="26" width="72" height="50" rx="13" ${s2("body")}/>`;
+    b += `<rect x="120" y="32" width="9" height="38" rx="4.5" ${s2("dark")}/>`;
+    b += `<path d="M64 40 L64 26 L84 26 Z" ${s2("acc2", 3.4)}/><path d="M68 66 L132 66" stroke="#2A2622" stroke-width="1.8" stroke-dasharray="4 4"/>`;
+    b += `<path d="${fluff(100, 22, 9, 7, 6, 2.4)}" ${s2("acc")}/>`;
+    b += face(c, 100, 48, { k: 0.85, gap: 15, eye: "cool", mouth: "smirk" });
+    return b;
+  };
+  var reverse = (c) => {
+    const s2 = c.s;
+    const cx = 100, cy = 106, R = 74;
+    const P = (deg, r = R) => [cx + r * Math.cos(deg * Math.PI / 180), cy + r * Math.sin(deg * Math.PI / 180)];
+    let ring = "";
+    let heads = "";
+    [0, 120, 240].forEach((a0) => {
+      const st = a0 - 52, en = a0 + 44;
+      const p0 = P(st), p1 = P(en);
+      ring += `M${n(p0[0])} ${n(p0[1])} A${R} ${R} 0 0 1 ${n(p1[0])} ${n(p1[1])} `;
+      const t = P(en + 12), l = P(en, R - 14), r = P(en, R + 14);
+      heads += `<path d="M${n(l[0])} ${n(l[1])} L${n(t[0])} ${n(t[1])} L${n(r[0])} ${n(r[1])} Z" ${s2("acc")}/>`;
+    });
+    let b = tube(ring, 20, c.p.acc, 9) + heads;
+    b += `<path d="${ring}" ${s2("lightline", 2.6)} stroke-dasharray="2 12"/>`;
+    [[-150, 1], [-30, 1], [70, -1]].forEach((q) => {
+      const a = q[0];
+      const p = P(a, R + 8);
+      b += leaf(s2, p[0], p[1], 20, a + 60 * q[1], "leaf");
+    });
+    b += leaf(s2, 64, 128, 22, 160, "leaf") + leaf(s2, 136, 128, 22, 20, "leaf");
+    b += leaf(s2, 100, 54, 26, -130, "leaf") + leaf(s2, 100, 54, 26, -50, "leaf");
+    b += `<path d="M100 50 C118 70 140 88 140 116 C140 144 122 160 100 160 C78 160 60 144 60 116 C60 88 82 70 100 50 Z" ${s2("body")}/>`;
+    b += `<path d="M126 98 Q138 120 126 148 Q132 120 126 98 Z" ${s2("dark")}/>`;
+    b += `<path d="M74 104 Q72 94 80 84" ${s2("lightline", 4)}/>`;
+    b += face(c, 100, 116, { gap: 15, mouth: "smile" });
+    return b;
+  };
+  var pal = (body, dark, acc, acc2, cheek, extra = {}) => ({ body, dark, acc, acc2, cheek, ...extra });
+  var LINES = {
+    petring: { type: "plastic", draw: pet, pal: pal("#CFE8F4", "#9AC6DE", "#E5553C", "#2C6BCB", "#F3A0A6"), shiny: pal("#F6E6A2", "#E1C562", "#8E62CF", "#EDAE30", "#F49DB8") },
+    colapet: { type: "plastic", draw: pet, rare: true, pal: pal("#C98C52", "#A26A36", "#D3263B", "#D3263B", "#F3A0A6"), shiny: pal("#F7D3DF", "#E8A9BE", "#7FB8E8", "#E9B03A", "#F49DB8") },
+    boxbear: { type: "paper", draw: box, pal: pal("#C99A62", "#A97A45", "#EBDBBB", "#7E5530", "#E99A86"), shiny: pal("#F6E3A1", "#E2C15F", "#FFF6DC", "#B98AD6", "#F49DB8") },
+    parcelbear: { type: "paper", draw: box, rare: true, pal: pal("#A8764A", "#87582F", "#E2C89A", "#5A3A1E", "#E99A86"), shiny: pal("#F2CDB8", "#DFA78E", "#FFF3E6", "#7FA9D9", "#F49DB8") },
+    candol: { type: "metal", draw: can, pal: pal("#C8CDD5", "#99A1AD", "#D8402F", "#7B8391", "#F0A0A0", { blade: "#EEF1F4", fish: "#5FA3D9" }), shiny: pal("#E9DDF7", "#C9B6E6", "#F2A43A", "#B49BD8", "#F49DB8", { blade: "#FFF6D8", fish: "#F2C14E" }) },
+    tunacan: { type: "metal", draw: can, rare: true, pal: pal("#E9C25A", "#C99A2E", "#3C7FC4", "#B8862A", "#F0A0A0", { blade: "#EEF1F4", fish: "#7FB8E8" }), shiny: pal("#D6EEF0", "#A8D3D8", "#F28CA6", "#7FBFC8", "#F49DB8", { blade: "#FFFFFF", fish: "#F2C14E" }) },
+    glassbird: { type: "glass", draw: glass, pal: pal("#8DCAA1", "#5FA67A", "#C8A46B", "#E8B748", "#F2A39B"), shiny: pal("#BDE6F2", "#8CC7DC", "#E9C7F0", "#F5B841", "#F49DB8") },
+    amberbird: { type: "glass", draw: glass, rare: true, pal: pal("#E0A65E", "#B97B36", "#C9302C", "#F0C04A", "#F2A39B"), shiny: pal("#F5C9D9", "#E39DB8", "#5FB8A8", "#F5B841", "#F49DB8") },
+    vinylghost: { type: "vinyl", draw: vinyl, float: (st) => st !== 2, groundRx: (st) => st === 2 ? 58 : 40, pal: pal("#F2EFF6", "#D3CBE2", "#6FB5E6", "#6FB5E6", "#F4A7BD"), shiny: pal("#FFF1C9", "#EBD18A", "#F49DB8", "#F49DB8", "#F4A7BD") },
+    bubblewrap: { type: "vinyl", draw: vinyl, rare: true, float: (st) => st !== 2, groundRx: (st) => st === 2 ? 58 : 40, pal: pal("#DDF0FA", "#B4D9EE", "#7DBDE6", "#7DBDE6", "#F4A7BD"), shiny: pal("#E8F7E4", "#BFE3B6", "#F09ABD", "#F09ABD", "#F4A7BD") },
+    voltmouse: { type: "volt", draw: volt, sparkles: [[36, 60, 9], [166, 52, 7], [40, 150, 5]], pal: pal("#FFD43B", "#E8B620", "#3A3632", "#C8CDD5", "#F49A8C", { ear: "#F49A8C", muz: "#FFF4CC" }), shiny: pal("#BFE9FF", "#8FCCEB", "#5B4A9E", "#E8ECF2", "#F49DB8", { ear: "#F49DB8", muz: "#FFFFFF" }) },
+    fabricsheep: { type: "fabric", draw: fabric, pal: pal("#FFF8F0", "#EBD9CF", "#C2577A", "#6FA8C8", "#F3A0A6", { acc3: "#F2C14E", leaf: "#7CC46A", skin: "#FBE3D2", leg: "#5A4E48" }), shiny: pal("#F4F0FF", "#D9CFF2", "#5FB8A8", "#F5A6C4", "#F49DB8", { acc3: "#FFE08A", leaf: "#F5A6C4", skin: "#FFF1E0", leg: "#8E7BB8" }) },
+    reverse: { type: "plastic", draw: reverse, stages: 1, float: () => true, groundRx: () => 50, sparkles: [[28, 30, 8], [176, 40, 6], [172, 172, 5]], pal: pal("#E6F6EC", "#BFE3CB", "#3FA66B", "#F2C94C", "#F3A0A6", { leaf: "#8BCB63" }), shiny: pal("#FFF6D8", "#EFD9A0", "#E9A93A", "#F2C94C", "#F49DB8", { leaf: "#F2A9C4" }) }
+  };
+  var REMON_LINE_TYPE = Object.fromEntries(
+    Object.keys(LINES).map((k) => [k, k === "reverse" ? "legend" : LINES[k].type])
+  );
+  var REMON_ART_KEYS = Object.keys(LINES).flatMap((k) => {
+    const ns = LINES[k].stages ?? 3;
+    return Array.from({ length: ns }, (_, i) => `${k}_${i + 1}`);
+  });
+  function renderRemon(artKey, opts = {}) {
+    const m = /^([a-z]+)_([123])$/.exec(artKey);
+    const def = m ? LINES[m[1]] : void 0;
+    const st = m ? Number(m[2]) : 1;
+    if (!def || st > (def.stages ?? 3)) {
+      return stickerSvg(`<path d="${fluff(100, 120, 50, 54, 9, 4)}" fill="#C9CCC6" stroke="#2A2622" stroke-width="4.5"/>`);
+    }
+    const c = ctx(opts.shiny ? def.shiny : def.pal, opts.mood ?? "normal");
+    let inner = def.draw(c, st, !!def.rare);
+    if (opts.shiny) inner += stars(c.s, def.sparkles ?? DEFAULT_SPARKS);
+    const float = def.float ? def.float(st) : false;
+    return stickerSvg(scaleFrom(STAGE_SCALE[st], inner), {
+      float,
+      groundRx: def.groundRx ? def.groundRx(st) : 44,
+      label: artKey
+    });
+  }
+
+  // frontend/src/art/boss.ts
+  function bossEyes(c, x, y, gap, k, hurt) {
+    const s2 = c.s;
+    let out = "";
+    [-1, 1].forEach((sd) => {
+      const ex = x + sd * gap;
+      const side = -sd;
+      const X = (d) => n(ex + d * k * side);
+      const Y = (d) => n(y + d * k);
+      if (hurt) {
+        out += `<path d="M${X(-6)} ${Y(-7)} L${X(5)} ${Y(0)} L${X(-6)} ${Y(7)}" ${s2("line", 3.8 * Math.max(k, 0.6))}/>`;
+        return;
+      }
+      out += `<path d="M${X(-10)} ${Y(-7)} L${X(9)} ${Y(0)} Q${X(8)} ${Y(9)} ${X(0)} ${Y(9)} Q${X(-10)} ${Y(9)} ${X(-10)} ${Y(-7)} Z" fill="${RED_EYE}" stroke="#2A2622" stroke-width="${n(4 * Math.max(k, 0.55))}" stroke-linejoin="round"/>`;
+      out += `<circle cx="${X(2)}" cy="${Y(3)}" r="${n(3.2 * k)}" ${s2("eye")}/>`;
+      out += `<path d="M${X(-12)} ${Y(-13)} L${X(11)} ${Y(-4)}" ${s2("line", 4.4 * Math.max(k, 0.55))}/>`;
+    });
+    if (hurt) out += `<path d="M${n(x + gap + 14 * k)} ${n(y - 16 * k)} Q${n(x + gap + 20 * k)} ${n(y - 6 * k)} ${n(x + gap + 14 * k)} ${n(y - 4 * k)} Q${n(x + gap + 8 * k)} ${n(y - 6 * k)} ${n(x + gap + 14 * k)} ${n(y - 16 * k)} Z" fill="#8CC8EA" stroke="#2A2622" stroke-width="${n(2.6 * Math.max(k, 0.6))}"/>`;
+    return out;
+  }
+  function fangs(c, x, y, w, h, hurt) {
+    const s2 = c.s;
+    if (hurt) {
+      return `<path d="M${x - w} ${y + h * 0.3} L${x - w / 2} ${y} L${x} ${y + h * 0.3} L${x + w / 2} ${y} L${x + w} ${y + h * 0.3}" ${s2("line", 3.4)}/>`;
+    }
+    const f = (a, b) => `<path d="M${n(x + a)} ${y} L${n(x + b)} ${y} L${n((2 * x + a + b) / 2)} ${n(y + h * 0.45)} Z" fill="#FFFFFF"/>`;
+    return `<path d="M${x - w} ${y} L${x + w} ${y} Q${x} ${y + h * 1.6} ${x - w} ${y} Z" ${s2("eye")}/>` + f(-w * 0.7, -w * 0.35) + f(w * 0.35, w * 0.7);
+  }
+  function burst(x, y, r) {
+    return `<path d="${spiky(x, y, r, r * 0.45, 8, -Math.PI / 8)}" fill="#FFFFFF" stroke="#2A2622" stroke-width="3" stroke-linejoin="round"/>`;
+  }
+  var slime = (c, hurt) => {
+    const s2 = c.s;
+    let b = "";
+    b += `<path d="M44 128 L156 128 L146 182 L54 182 Z" ${s2("acc")}/>`;
+    b += `<path d="M134 132 L150 132 L142 178 L128 178 Z" ${s2("~tubd")}/>`;
+    b += `<path d="M72 146 L74 174 M100 146 L100 176 M128 146 L126 174" ${s2("line", 2.2)}/>`;
+    b += `<path d="M38 136 C26 104 50 52 100 50 C150 52 174 104 162 136 C150 148 50 148 38 136 Z" ${s2("body")}/>`;
+    b += `<path d="M56 136 Q54 160 61 162 Q68 160 66 138 Z" ${s2("body", 3.6)}/><path d="M92 140 Q91 166 99 168 Q107 166 106 140 Z" ${s2("body", 3.6)}/><path d="M132 136 Q132 152 138 154 Q144 152 142 136 Z" ${s2("body", 3.6)}/>`;
+    b += `<path d="M138 72 Q162 100 154 132 Q148 104 128 80 Z" ${s2("dark")}/>`;
+    b += `<path d="M58 92 Q62 74 76 66" ${s2("lightline", 5)}/>`;
+    b += tube("M58 112 q6 -8 12 0 t12 0", 8, c.p.noodle, 4.4);
+    b += `<path d="${fluff(130, 118, 8, 6, 6, 2)}" ${s2("sauce", 3)}/><circle cx="72" cy="128" r="5" ${s2("yolk", 3)}/><circle cx="118" cy="64" r="4" ${s2("sauce", 2.6)}/>`;
+    b += `<path d="${fluff(118, 162, 7, 5, 5, 2)}" ${s2("sauce", 3)}/><circle cx="76" cy="164" r="3.4" ${s2("yolk", 2.4)}/>`;
+    b += rot(-16, 80, 50, `<rect x="44" y="40" width="72" height="12" rx="4" ${s2("acc2")}/><rect x="72" y="32" width="16" height="9" rx="3" ${s2("acc2", 3.4)}/>`);
+    b += bossEyes(c, 100, 92, 22, 1, hurt);
+    b += fangs(c, 100, 112, 18, 14, hurt);
+    const fly = (x, y) => `<ellipse cx="${x - 4}" cy="${y - 4}" rx="4" ry="2.6" fill="#FFFFFF" stroke="#2A2622" stroke-width="1.8"/><ellipse cx="${x + 4}" cy="${y - 4}" rx="4" ry="2.6" fill="#FFFFFF" stroke="#2A2622" stroke-width="1.8"/><circle cx="${x}" cy="${y}" r="3.4" fill="#2A2622"/>`;
+    b += fly(30, 64) + fly(172, 50);
+    return b;
+  };
+  var golem = (c, hurt) => {
+    const s2 = c.s;
+    let b = "";
+    b += `<rect x="62" y="150" width="30" height="34" rx="6" ${s2("body")}/><rect x="108" y="150" width="30" height="34" rx="6" ${s2("body")}/>`;
+    b += `<rect x="20" y="78" width="30" height="74" rx="13" ${s2("body")}/><rect x="150" y="78" width="30" height="74" rx="13" ${s2("body")}/>`;
+    b += `<rect x="46" y="64" width="108" height="98" rx="16" ${s2("body")}/>`;
+    b += `<rect x="134" y="74" width="12" height="80" rx="6" ${s2("dark")}/>`;
+    b += `<g transform="rotate(-17 100 112)"><rect x="28" y="100" width="144" height="22" ${s2("acc")}/><path d="M60 105 L60 117 M64 105 L64 117 M70 105 L70 117 M73 105 L73 117 M78 105 L78 117" ${s2("line", 2)}/></g>`;
+    b += `<g transform="rotate(13 100 136)"><rect x="34" y="128" width="132" height="18" ${s2("acc2")}/></g>`;
+    b += `<path d="M58 80 L66 90 L62 98" ${s2("line", 2.6)}/>`;
+    b += `<rect x="68" y="26" width="64" height="46" rx="11" ${s2("body")}/>`;
+    b += `<rect x="116" y="32" width="9" height="34" rx="4.5" ${s2("dark")}/>`;
+    b += bossEyes(c, 100, 47, 13, 0.75, hurt);
+    b += `<path d="M84 64 L90 60 L96 64 L102 60 L108 64 L114 60" ${s2("line", 3.2)}/>`;
+    return b;
+  };
+  var chimera = (c, hurt) => {
+    const s2 = c.s;
+    const X = (x, y) => `<path d="M${x - 5} ${y - 5} L${x + 5} ${y + 5} M${x + 5} ${y - 5} L${x - 5} ${y + 5}" ${s2("line", 2.6)}/>`;
+    let b = "";
+    b += rot(
+      22,
+      150,
+      100,
+      tube("M146 74 C144 56 158 56 156 74", 10, c.p.bag, 7) + tube("M164 74 C162 56 176 56 174 74", 10, c.p.bag, 7) + `<path d="M138 72 L182 72 L188 128 Q180 136 172 128 Q164 138 156 128 Q148 136 138 128 Z" ${s2("bag")}/><path d="M138 72 L182 72 L183 82 L138 82 Z" ${s2("bagb")}/><path d="M150 100 L156 110 M170 96 L174 108" ${s2("line", 2.2)}/>`
+    );
+    b += `<rect x="64" y="160" width="26" height="24" rx="5" ${s2("body")}/><rect x="110" y="160" width="26" height="24" rx="5" ${s2("can")}/>`;
+    b += rot(
+      28,
+      52,
+      100,
+      `<rect x="42" y="84" width="16" height="10" rx="3" ${s2("label")}/><path d="M44 92 L56 92 L56 98 C56 104 66 106 66 116 L66 152 Q66 160 58 160 L42 160 Q34 160 34 152 L34 116 C34 106 44 104 44 98 Z" ${s2("pet")}/><rect x="34" y="126" width="32" height="14" ${s2("#E5553C")}/><rect x="40" y="110" width="5" height="12" rx="2.5" ${s2("light")}/>`
+    );
+    b += `<rect x="52" y="96" width="96" height="70" rx="8" ${s2("body")}/>`;
+    b += `<rect x="130" y="102" width="10" height="58" rx="5" ${s2("dark")}/>`;
+    b += `<path d="M52 114 L148 114" ${s2("line", 3)}/><rect x="90" y="96" width="20" height="18" ${s2("acc")}/>`;
+    b += `<path d="M66 154 L74 142 L82 154 Z" ${s2("line", 2.4)}/>`;
+    b += `<path d="M118 44 L136 14 L130 48 Z" ${s2("glass")}/>`;
+    b += `<rect x="68" y="38" width="64" height="62" rx="10" ${s2("can")}/>`;
+    b += `<rect x="116" y="48" width="8" height="46" rx="4" ${s2("~cand")}/>`;
+    b += `<ellipse cx="100" cy="40" rx="32" ry="8" ${s2("cant")}/><ellipse cx="100" cy="40" rx="22" ry="4.5" ${s2("~cand")}/>`;
+    b += `<ellipse cx="84" cy="28" rx="8" ry="5" ${s2("line", 3.2)}/>`;
+    b += `<rect x="68" y="86" width="64" height="12" ${s2("canb")}/>`;
+    b += bossEyes(c, 100, 60, 14, 0.75, hurt);
+    b += fangs(c, 100, 74, 11, 8, hurt);
+    b += X(84, 100) + X(116, 100) + X(56, 106) + X(146, 108);
+    return b;
+  };
+  var CRITTERS = [
+    { x: 52, y: 150, col: "#5AA0E0", pts: [[-22, -8], [-6, -24], [18, -18], [24, 6], [8, 20], [-18, 16]] },
+    { x: 102, y: 160, col: "#F4F1EA", pts: [[-20, -14], [2, -22], [22, -10], [18, 16], [-10, 20], [-24, 4]] },
+    { x: 152, y: 148, col: "#E86A5A", pts: [[-18, -18], [14, -22], [22, 0], [10, 20], [-16, 18], [-24, -2]] },
+    { x: 74, y: 92, col: "#F2C94C", pts: [[-18, -12], [4, -20], [20, -6], [14, 16], [-14, 14]] },
+    { x: 130, y: 88, col: "#7CC46A", pts: [[-16, -16], [16, -14], [20, 10], [0, 20], [-20, 8]] }
+  ];
+  var micro = (c, hurt) => {
+    const s2 = c.s;
+    let b = "";
+    [[30, 108, "#5AA0E0"], [172, 110, "#F2C94C"], [102, 50, "#E86A5A"], [42, 60, "#7CC46A"], [164, 56, "#F4F1EA"], [104, 120, "#F2C94C"]].forEach((d, i) => {
+      const x = d[0], y = d[1];
+      b += `<path d="${poly([[-5, -4], [5, -5], [3, 5], [-4, 4]], x, y, 1 + i % 2 * 0.3)}" fill="${d[2]}" stroke="#2A2622" stroke-width="2.6" stroke-linejoin="round"/>`;
+    });
+    CRITTERS.forEach((cr, i) => {
+      const shade2 = cr.pts.slice(2, 4).concat([[0, 0]]);
+      b += `<path d="${poly(cr.pts, cr.x, cr.y)}" fill="${cr.col}" stroke="#2A2622" stroke-width="4.2" stroke-linejoin="round"/>`;
+      b += `<path d="${poly(shade2, cr.x, cr.y, 0.8)}" fill="#000000" fill-opacity=".12"/>`;
+      b += `<path d="M${cr.x - 12} ${cr.y - 6} L${cr.x - 6} ${cr.y - 13}" ${s2("lightline", 3.4)}/>`;
+      b += bossEyes(c, cr.x, cr.y - 1, 7, 0.45, hurt);
+      b += fangs(c, cr.x, cr.y + 7, 5, 4, hurt);
+      if (i >= 3) b += `<path d="M${cr.x - 8} ${cr.y + 26} L${cr.x - 8} ${cr.y + 32} M${cr.x} ${cr.y + 28} L${cr.x} ${cr.y + 35} M${cr.x + 8} ${cr.y + 26} L${cr.x + 8} ${cr.y + 32}" ${s2("line", 2.2)}/>`;
+    });
+    return b;
+  };
+  var styro = (c, hurt) => {
+    const s2 = c.s;
+    let b = "";
+    const dots = (x0, y0, w, h) => {
+      let o = "";
+      for (let i = 0; i < 6; i++)
+        for (let j = 0; j < 5; j++) {
+          if ((i * 7 + j * 3) % 4 !== 0) continue;
+          o += `<circle cx="${n(x0 + (i + 0.5) * w / 6)}" cy="${n(y0 + (j + 0.5) * h / 5)}" r="2.2" ${s2("~dot")}/>`;
+        }
+      return o;
+    };
+    b += `<rect x="56" y="156" width="36" height="30" rx="5" ${s2("body")}/><rect x="108" y="156" width="36" height="30" rx="5" ${s2("body")}/>`;
+    const arm = `<rect x="12" y="80" width="34" height="74" rx="6" ${s2("body")}/><rect x="8" y="146" width="42" height="30" rx="8" ${s2("body")}/><path d="M18 100 L40 100" ${s2("line", 2.2)}/>`;
+    b += arm + mirror(arm);
+    b += `<rect x="36" y="70" width="128" height="94" rx="8" ${s2("body")}/>`;
+    b += `<rect x="146" y="78" width="10" height="78" rx="5" ${s2("dark")}/>`;
+    b += dots(40, 74, 104, 86);
+    b += `<path d="M36 92 L110 92 M36 142 L84 142 M120 142 L164 142" ${s2("line", 2.4)}/>`;
+    b += `<path d="M56 112 L66 120 L62 130 L72 136" ${s2("line", 2.6)}/>`;
+    b += `<path d="${fluff(124, 120, 9, 7, 6, 2.4)}" ${s2("stain", 3)}/><circle cx="30" cy="124" r="4" ${s2("stain", 2.4)}/>`;
+    b += `<path d="M36 82 L36 70 L46 70 L44 76 Z" fill="#FFFFFF" stroke="none"/>`;
+    b += `<rect x="70" y="26" width="60" height="50" rx="6" ${s2("body")}/><rect x="114" y="32" width="9" height="38" rx="4.5" ${s2("dark")}/>`;
+    b += dots(72, 28, 50, 44);
+    b += bossEyes(c, 100, 46, 14, 0.8, hurt);
+    b += `<path d="M84 64 L90 60 L96 64 L102 60 L108 64 L114 60" ${s2("line", 3.2)}/>`;
+    return b;
+  };
+  var BOSSES = {
+    slime: { draw: slime, groundRx: 66, pal: { body: "#A8BF6A", dark: "#869E4C", acc: "#EEF0F2", acc2: "#C9D3DC", cheek: "#000000", tubd: "#D5DBE1", sauce: "#D8452F", yolk: "#E9B93A", noodle: "#F3E3B0" } },
+    label_golem: { draw: golem, groundRx: 72, pal: { body: "#8B87A1", dark: "#68637E", acc: "#EFC83E", acc2: "#E4473A", cheek: "#000000" } },
+    chimera: { draw: chimera, groundRx: 66, pal: { body: "#C99A62", dark: "#A97A45", acc: "#EBDBBB", acc2: "#7E5530", cheek: "#000000", can: "#C8CDD5", cand: "#99A1AD", cant: "#7B8391", canb: "#D8402F", pet: "#CFE8F4", label: "#2C6BCB", bag: "#F2EFF6", bagb: "#7A55B0", glass: "#8DCAA1" } },
+    microplastic: { draw: micro, groundRx: 78, scale: 1.12, pal: { body: "#5AA0E0", dark: "#3E7FC0", acc: "#F2C94C", acc2: "#E86A5A", cheek: "#000000" } },
+    styro_giant: { draw: styro, groundRx: 80, pal: { body: "#F6F5EF", dark: "#DCDBD0", acc: "#E9E7DC", acc2: "#C9C7BA", cheek: "#000000", dot: "#E2E0D3", stain: "#E3A05A" } }
+  };
+  var BOSS_KEYS = Object.keys(BOSSES);
+  function renderBoss(key, opts = {}) {
+    const def = BOSSES[key] ?? BOSSES.label_golem;
+    const hurt = !!opts.hurt;
+    const c = ctx(def.pal, hurt ? "hurt" : "normal");
+    let inner = scaleFrom(def.scale ?? 1, def.draw(c, hurt));
+    if (hurt) inner = `<g transform="rotate(-5 100 186) translate(4 0)">${inner}</g>` + burst(34, 40, 14) + burst(170, 70, 10) + burst(160, 22, 7);
+    return stickerSvg(inner, { groundRx: def.groundRx, label: key, anim: hurt ? "rc-shake" : "rc-bob" });
+  }
+
+  // frontend/src/art/garden.ts
+  var GP = {
+    bright: {
+      body: "#6FBF5A",
+      dark: "#4F9C45",
+      acc: "#9A6A3E",
+      acc2: "#A97A45",
+      cheek: "#F3A0A6",
+      sky: "#DCEFF5",
+      far: "#BFE3A9",
+      hill: "#9ED07C",
+      hill2: "#8BC36B",
+      seed: "#C99A62",
+      seedd: "#A97A45",
+      flower: "#F49DB8",
+      flower2: "#FFD447",
+      pine: "#4FA05A",
+      sun: "#FFD447",
+      cloud: "#FFFFFF",
+      fruit: "#E5553C",
+      stem: "#5DAF4E"
+    },
+    dim: {
+      body: "#8E9F82",
+      dark: "#76866C",
+      acc: "#7E6B58",
+      acc2: "#8C7966",
+      cheek: "#D7A9AA",
+      sky: "#D6D9D7",
+      far: "#B9BFB2",
+      hill: "#A6AE9A",
+      hill2: "#979F8B",
+      seed: "#A08B72",
+      seedd: "#87735D",
+      flower: "#C3A6AD",
+      flower2: "#CFC491",
+      pine: "#7D8F76",
+      sun: "#E3DDB9",
+      cloud: "#A4A8AB",
+      fruit: "#B78279",
+      stem: "#83957A"
+    }
+  };
+  var BASE = 152;
+  var CX = 180;
+  function mound(c, x, w) {
+    return `<path d="M${x - w} ${BASE + 4} C${x - w * 0.7} ${BASE - 26} ${x + w * 0.7} ${BASE - 26} ${x + w} ${BASE + 4} Z" ${c.s("acc2")}/><path d="M${x - w * 0.5} ${BASE - 6} L${x - w * 0.36} ${BASE - 2} M${x + w * 0.3} ${BASE - 8} L${x + w * 0.44} ${BASE - 3}" ${c.s("line", 2.2)}/>`;
+  }
+  function seed(c, x, y, k, dim) {
+    const s2 = c.s;
+    return rot(
+      -10,
+      x,
+      y,
+      `<ellipse cx="${x}" cy="${y}" rx="${17 * k}" ry="${21 * k}" ${s2("seed")}/><path d="M${n(x + 9 * k)} ${n(y - 12 * k)} Q${n(x + 16 * k)} ${y} ${n(x + 9 * k)} ${n(y + 14 * k)} Q${n(x + 12 * k)} ${y} ${n(x + 9 * k)} ${n(y - 12 * k)} Z" ${s2("~seedd")}/><path d="M${n(x - 8 * k)} ${n(y - 12 * k)} Q${n(x - 10 * k)} ${n(y - 6 * k)} ${n(x - 11 * k)} ${n(y - 2 * k)}" ${s2("lightline", 3)}/>`
+    ) + gface(c, x, y + 2 * k, 0.42 * k, dim);
+  }
+  function gface(c, x, y, k, dim) {
+    return face(c, x, y, dim ? { k, gap: 16, brow: "sad", mouth: "frown" } : { k, gap: 16, mouth: "smile" });
+  }
+  function roundTree(c, x, base, h, r, faceK, dim) {
+    const s2 = c.s;
+    const cy = base - h;
+    let o = `<path d="M${x - r * 0.2} ${base} L${x - r * 0.1} ${cy + r * 0.4} L${x + r * 0.1} ${cy + r * 0.4} L${x + r * 0.2} ${base} Z" ${s2("acc")}/>`;
+    o += `<path d="${fluff(x, cy, r, r * 0.78, 9, r * 0.1, 0.2)}" ${s2("body")}/>`;
+    o += `<path d="M${x + r * 0.62} ${cy - r * 0.4} Q${x + r * 0.95} ${cy} ${x + r * 0.6} ${cy + r * 0.5} Q${x + r * 0.75} ${cy} ${x + r * 0.62} ${cy - r * 0.4} Z" ${s2("dark")}/>`;
+    o += `<path d="M${x - r * 0.62} ${cy - r * 0.1} Q${x - r * 0.6} ${cy - r * 0.45} ${x - r * 0.3} ${cy - r * 0.6}" ${s2("lightline", 4)}/>`;
+    if (faceK > 0) o += gface(c, x, cy + 2, faceK, dim);
+    return o;
+  }
+  function pineTree(c, x, base, h) {
+    const s2 = c.s;
+    const w = h * 0.42;
+    let o = `<rect x="${x - 4}" y="${base - 14}" width="8" height="14" rx="2" ${s2("acc", 3.4)}/>`;
+    [0, 1, 2].forEach((i) => {
+      const yb = base - 10 - i * h * 0.26;
+      const ww = w * (1 - i * 0.22);
+      o += `<path d="M${n(x - ww)} ${n(yb)} L${x} ${n(yb - h * 0.42)} L${n(x + ww)} ${n(yb)} Z" ${s2("pine", 3.6)}/>`;
+    });
+    return o;
+  }
+  function flower(c, x, y, role) {
+    const s2 = c.s;
+    let o = `<path d="M${x} ${y + 12} L${x} ${y}" ${s2("line", 2.4)}/>`;
+    [0, 72, 144, 216, 288].forEach((a) => {
+      const r = a * Math.PI / 180;
+      o += `<circle cx="${n(x + 4.6 * Math.cos(r))}" cy="${n(y + 4.6 * Math.sin(r))}" r="3.6" ${s2(role, 2)}/>`;
+    });
+    return o + `<circle cx="${x}" cy="${y}" r="2.6" ${s2("flower2", 1.6)}/>`;
+  }
+  function litter(c) {
+    const s2 = c.s;
+    let o = "";
+    o += rot(-12, 84, 172, `<rect x="70" y="164" width="30" height="17" rx="4" ${s2("#B7BCC3", 3.2)}/><rect x="80" y="164" width="9" height="17" ${s2("#B07A70", 2.6)}/>`);
+    o += rot(8, 268, 170, `<path d="M250 164 L278 164 Q284 164 288 168 L294 168 L294 174 L288 174 Q284 178 278 178 L250 178 Q246 178 246 171 Q246 164 250 164 Z" ${s2("#C6D3D8", 3.2)}/><rect x="258" y="164" width="12" height="14" ${s2("#B88F86", 2.6)}/>`);
+    o += `<path d="${poly([[-12, -4], [-4, -9], [6, -6], [12, 2], [4, 7], [-8, 6]], 322, 178)}" ${s2("#D9D6DF", 3)}/><path d="M316 176 L324 180" ${s2("line", 2)}/>`;
+    o += `<path d="M132 180 L146 176 L150 184 L136 188 Z" ${s2("#C7B37E", 3)}/><path d="M130 179 L133 189 M147 175 L151 185" ${s2("line", 2)}/>`;
+    return o;
+  }
+  function sky(c, dim) {
+    const s2 = c.s;
+    if (!dim) {
+      let o = `<circle cx="318" cy="40" r="17" ${s2("sun", 3.6)}/>`;
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        o += `<path d="M${n(318 + 24 * Math.cos(a))} ${n(40 + 24 * Math.sin(a))} L${n(318 + 30 * Math.cos(a))} ${n(40 + 30 * Math.sin(a))}" ${s2("line", 3)}/>`;
+      }
+      o += `<path d="${fluff(70, 42, 26, 11, 7, 3.5, 0.4)}" ${s2("cloud", 3.4)}/>`;
+      o += `<path d="${fluff(206, 28, 17, 7, 6, 2.6, 0.4)}" ${s2("cloud", 3)}/>`;
+      return o;
+    }
+    return `<circle cx="324" cy="34" r="15" ${s2("sun", 3.4)}/><path d="${fluff(298, 46, 30, 13, 8, 4, 0.3)}" ${s2("cloud", 3.6)}/><path d="M282 50 Q298 56 316 50" ${s2("line", 2.2)}/>`;
+  }
+  function renderGarden(stage, mood) {
+    const dim = mood === "dim";
+    const c = ctx(GP[mood]);
+    const p = c.p;
+    const s2 = c.s;
+    let bg = `<rect width="360" height="200" rx="18" fill="${p.sky}"/>`;
+    bg += `<path d="M0 124 Q50 98 110 118 Q170 136 230 112 Q300 90 360 116 L360 160 L0 160 Z" fill="${p.far}"/>`;
+    bg += `<path d="M0 146 Q90 132 180 144 Q270 154 360 138 L360 182 Q360 200 342 200 L18 200 Q0 200 0 182 Z" fill="${p.hill}"/>`;
+    bg += `<path d="M0 176 Q120 168 220 178 Q300 184 360 172 L360 182 Q360 200 342 200 L18 200 Q0 200 0 182 Z" fill="${p.hill2}"/>`;
+    let plant = "";
+    if (stage === 1) {
+      plant += mound(c, CX, 54) + seed(c, CX, BASE - 22, 1, dim);
+    } else if (stage === 2) {
+      plant += mound(c, CX, 50);
+      plant += tube(`M${CX} ${BASE - 14} C${CX + 2} ${BASE - 34} ${CX - 4} ${BASE - 46} ${CX} ${BASE - 60}`, 11, p.stem, 6);
+      plant += leaf(s2, CX, BASE - 58, 36, -160, "body") + leaf(s2, CX, BASE - 60, 40, -24, "body");
+      plant += seed(c, CX, BASE - 10, 0.85, dim);
+    } else {
+      if (stage === 4) {
+        plant += pineTree(c, 62, BASE - 6, 82) + roundTree(c, 116, BASE - 4, 62, 30, 0, dim);
+        plant += roundTree(c, 252, BASE - 4, 58, 28, 0, dim) + pineTree(c, 304, BASE - 8, 90);
+        plant += `<path d="${fluff(26, BASE + 4, 18, 10, 6, 3, 3.3)}" ${s2("dark", 0)} stroke="#2A2622" stroke-width="3.6"/>`;
+        plant += `<path d="${fluff(340, BASE + 2, 16, 9, 6, 3, 3.3)}" ${s2("dark", 0)} stroke="#2A2622" stroke-width="3.6"/>`;
+      }
+      const r = stage === 4 ? 52 : 48;
+      plant += roundTree(c, CX, BASE, stage === 4 ? 80 : 74, r, 0.62, dim);
+      if (!dim) plant += [[-30, -86], [24, -96], [36, -70], [-18, -110]].map((q) => `<circle cx="${CX + q[0]}" cy="${BASE + q[1]}" r="5" ${s2("fruit", 2.6)}/>`).join("");
+      plant += flower(c, 128, BASE + 2, "flower") + flower(c, 232, BASE + 4, "flower2");
+      if (stage === 4) plant += flower(c, 88, BASE + 16, "flower2") + flower(c, 282, BASE + 14, "flower") + flower(c, 210, BASE + 22, "flower");
+    }
+    const grass = [[40, 170], [150, 186], [226, 172], [300, 188], [100, 160]].map((g) => `<path d="M${g[0] - 5} ${g[1]} L${g[0] - 7} ${g[1] - 8} M${g[0]} ${g[1]} L${g[0]} ${g[1] - 10} M${g[0] + 5} ${g[1]} L${g[0] + 7} ${g[1] - 8}" stroke="${p.dark}" stroke-width="2.6" stroke-linecap="round"/>`).join("");
+    const stk2 = (inner) => `<g filter="url(#rc-stk-m)"><g filter="url(#rc-wob)">${inner}</g></g>`;
+    return `<svg viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="garden-${stage}-${mood}">` + bg + grass + stk2(sky(c, dim)) + `<ellipse cx="${CX}" cy="${BASE + 8}" rx="${stage >= 3 ? 60 : 50}" ry="6" fill="#000000" fill-opacity=".1"/>` + stk2(plant) + (dim ? stk2(litter(c)) : "") + "</svg>";
+  }
+
+  // frontend/src/art/icons.ts
+  var K = 0.62;
+  var PAL = { body: "#FFFFFF", dark: "#000000", acc: "#FFFFFF", acc2: "#FFFFFF", cheek: "#F3A0A6" };
+  var s = styler(PAL, K);
+  var shade = (d) => `<path d="${d}" fill="#000000" fill-opacity=".14"/>`;
+  var LIGHT = {
+    plastic: "#7FB0EE",
+    paper: "#D9B07A",
+    metal: "#C3C9D2",
+    glass: "#7CC79A",
+    vinyl: "#B79BDF",
+    volt: "#FFD43B",
+    fabric: "#EC8FAE"
+  };
+  function bottle(x, y, k, fill, cap) {
+    const P = (dx, dy) => `${n(x + dx * k)} ${n(y + dy * k)}`;
+    return `<path d="M${P(-3, -16)} L${P(3, -16)} L${P(3, -12)} Q${P(8, -10)} ${P(8, -4)} L${P(8, 14)} Q${P(8, 16)} ${P(6, 16)} L${P(-6, 16)} Q${P(-8, 16)} ${P(-8, 14)} L${P(-8, -4)} Q${P(-8, -10)} ${P(-3, -12)} Z" ${s(fill, 3)}/><rect x="${n(x - 4 * k)}" y="${n(y - 20 * k)}" width="${n(8 * k)}" height="${n(5 * k)}" rx="1" ${s(cap, 3)}/>`;
+  }
+  var SYMBOL = {
+    plastic: () => bottle(32, 34, 0.95, "#FFFFFF", "#FFFFFF"),
+    paper: () => `<rect x="20" y="24" width="24" height="20" rx="2" ${s("#FFFFFF", 3)}/><path d="M20 30 L44 30" ${s("line", 2.6)}/><rect x="29" y="24" width="6" height="6" ${s("#FFFFFF", 2.4)}/>`,
+    metal: () => `<rect x="23" y="18" width="18" height="28" rx="3" ${s("#FFFFFF", 3)}/><ellipse cx="32" cy="19" rx="9" ry="2.6" ${s("#FFFFFF", 2.6)}/><path d="M23 36 L41 36" ${s("line", 2.6)}/>`,
+    glass: () => `<path d="M32 17 L45 29 L32 48 L19 29 Z" ${s("#FFFFFF", 3)}/><path d="M19 29 L45 29 M27 29 L32 47 M37 29 L32 47" ${s("line", 2)}/>`,
+    vinyl: () => tube("M26 24 C25 15 31 15 30 24", 6, "#FFFFFF", 4) + tube("M34 24 C33 15 39 15 38 24", 6, "#FFFFFF", 4) + `<path d="M21 23 L43 23 L45 46 Q32 50 19 46 Z" ${s("#FFFFFF", 3)}/>`,
+    volt: () => `<path d="${poly([[-4, -16], [9, -16], [3, -3], [10, -3], [-6, 17], [-2, 3], [-9, 3]], 32, 32)}" ${s("#FFFFFF", 3)}/>`,
+    fabric: () => `<circle cx="32" cy="32" r="13" ${s("#FFFFFF", 3)}/><circle cx="32" cy="32" r="9" ${s("line", 1.8)}/>` + [[-1, -1], [1, -1], [-1, 1], [1, 1]].map((d) => `<circle cx="${32 + d[0] * 3.6}" cy="${32 + d[1] * 3.6}" r="1.9" ${s("eye")}/>`).join("")
+  };
+  var ICONS = {
+    mat_plastic: () => `<path d="${poly([[-10, -4], [-2, -12], [10, -8], [12, 4], [2, 10], [-8, 8]], 22, 24)}" ${s("#CFE8F4")}/><path d="${poly([[-18, -6], [-4, -18], [14, -14], [18, 6], [6, 18], [-14, 14]], 36, 38)}" ${s(LIGHT.plastic)}/>` + shade(poly([[18, 6], [6, 18], [-2, 10], [10, 2]], 36, 38)) + `<path d="M26 32 L32 26" ${s("lightline", 4)}/>`,
+    mat_paper: () => `<path d="${fluff(22, 40, 11, 9, 6, 2.4)}" ${s("#EBDBBB")}/><path d="${fluff(36, 34, 18, 15, 8, 3)}" ${s(LIGHT.paper)}/><path d="M26 30 q4 -4 8 0 t8 0 M28 40 q4 -4 8 0 t8 0" ${s("line", 2.4)}/>`,
+    mat_metal: () => `<path d="M8 36 L56 36 L56 48 Q56 50 54 50 L10 50 Q8 50 8 48 Z" ${s("#99A1AD")}/><path d="M16 20 L48 20 L56 36 L8 36 Z" ${s(LIGHT.metal)}/><path d="M20 26 L34 26" ${s("lightline", 4)}/><path d="M48 40 L48 46" ${s("lightline", 3)}/>`,
+    mat_glass: () => `<path d="M36 54 L46 24 L56 54 Z" ${s("#A9DDBA")}/><path d="M10 54 L26 8 L40 54 Z" ${s(LIGHT.glass)}/>` + shade("M26 8 L40 54 L30 54 Z") + `<path d="M20 42 L25 22" ${s("lightline", 3.6)}/>`,
+    mat_vinyl: () => `<path d="M14 16 Q24 10 34 16 T54 16 L54 38 Q44 44 34 38 T14 38 Z" ${s("#E4DAF3")}/><path d="M10 26 Q21 18 32 26 T52 26 L52 50 Q41 58 32 50 T10 50 Z" ${s(LIGHT.vinyl)}/><path d="M24 26 L22 50 M40 28 L42 50" ${s("line", 2)}/><path d="M14 32 Q18 29 22 30" ${s("lightline", 3.6)}/>`,
+    mat_volt: () => `<path d="${spiky(32, 32, 24, 24, 3, -Math.PI / 2)}" ${s(LIGHT.volt)}/><path d="${spiky(32, 32, 15, 15, 3, -Math.PI / 2)}" ${s("#E8B620", 2.6)}/><path d="${poly([[-3, -11], [6, -11], [2, -2], [7, -2], [-4, 12], [-1, 2], [-6, 2]], 32, 32)}" ${s("#FFFFFF", 2.6)}/>`,
+    mat_fabric: () => tube("M44 40 C56 42 58 54 48 54 C42 54 44 48 50 48", 6, LIGHT.fabric, 3.6) + `<rect x="14" y="8" width="32" height="8" rx="3" ${s("#C99A62")}/><rect x="14" y="48" width="32" height="8" rx="3" ${s("#C99A62")}/><rect x="18" y="16" width="24" height="32" ${s(LIGHT.fabric)}/><path d="M18 22 L42 26 M18 30 L42 34 M18 38 L42 42" ${s("line", 1.8)}/>`,
+    crystal: () => `<path d="M32 6 L46 20 L46 44 L32 58 L18 44 L18 20 Z" ${s("#8EE0CC")}/>` + shade("M32 6 L46 20 L46 44 L32 58 Z") + `<path d="M18 20 L32 28 L46 20 M32 28 L32 58" ${s("line", 2)}/><path d="M23 24 L23 38" ${s("lightline", 3.6)}/>` + star(s, 50, 10, 5),
+    coin: () => `<circle cx="32" cy="33" r="23" ${s("#F2C14E")}/><circle cx="32" cy="33" r="16" ${s("line", 2)}/>` + shade("M48 18 A23 23 0 0 1 32 56 A20 20 0 0 0 48 18 Z") + leaf(s, 22, 42, 22, -50, "#D99A2B") + `<path d="M18 22 Q22 16 28 14" ${s("lightline", 3.6)}/>`,
+    ticket: () => rot(
+      -12,
+      32,
+      32,
+      `<path d="M8 20 L56 20 L56 28 A4 4 0 0 0 56 36 L56 44 L8 44 L8 36 A4 4 0 0 0 8 28 Z" ${s("#F2836B")}/><path d="M42 22 L42 42" stroke="#FFFFFF" stroke-width="2.6" stroke-dasharray="3 3"/><path d="M14 25 L36 25" ${s("lightline", 2.6)}/>` + star(s, 25, 33, 7) + `<circle cx="49" cy="32" r="3" fill="#FFFFFF"/>`
+    ),
+    bag: () => tube("M22 26 C22 8 42 8 42 26", 8, "#3E8E5A", 5) + `<path d="M10 24 L54 24 L50 56 L14 56 Z" ${s("#4FA36B")}/>` + shade("M44 24 L54 24 L50 56 L42 56 Z") + `<rect x="20" y="34" width="22" height="16" rx="3" ${s("#8BCB63", 2.6)}/>` + leaf(s, 25, 46, 14, -45, "#FFFFFF"),
+    stamp: () => `<circle cx="44" cy="48" r="13" fill="none" stroke="#3FA66B" stroke-width="3" stroke-dasharray="5 3"/>` + rot(
+      -14,
+      28,
+      30,
+      `<rect x="10" y="36" width="36" height="8" rx="2" ${s("#E4473A")}/><rect x="13" y="28" width="30" height="9" rx="3" ${s("#C99A62")}/><rect x="24" y="14" width="8" height="15" ${s("#C99A62")}/><circle cx="28" cy="11" r="7" ${s("#C99A62")}/><path d="M25 8 Q27 6 30 6" ${s("lightline", 2.4)}/>`
+    ),
+    raid: () => `<path d="${spiky(32, 32, 14, 7, 6)}" ${s("#FFD447", 2.6)}/>` + rot(42, 32, 32, bottle(32, 33, 1.45, "#CFE8F4", "#2C6BCB") + `<rect x="21" y="34" width="22" height="8" ${s("#E5553C", 2.6)}/>`) + rot(-42, 32, 32, `<rect x="25" y="8" width="14" height="48" rx="4" ${s("#C8CDD5")}/><ellipse cx="32" cy="9" rx="7" ry="2.4" ${s("#7B8391", 2.4)}/><rect x="25" y="34" width="14" height="10" ${s("#D8402F", 2.6)}/>`),
+    map_pin: () => `<path d="M32 58 C22 44 12 36 12 25 A20 20 0 0 1 52 25 C52 36 42 44 32 58 Z" ${s("#3FA66B")}/>` + shade("M42 8 A20 20 0 0 1 52 25 C52 36 42 44 32 58 C38 44 46 34 42 8 Z") + `<circle cx="32" cy="25" r="10" ${s("#FFFFFF", 2.6)}/>` + leaf(s, 26, 30, 13, -50, "#8BCB63")
+  };
+  REMON_TYPES.forEach((t) => {
+    ICONS["capsule_" + t] = () => rot(
+      -14,
+      32,
+      33,
+      `<path d="M14 31 Q14 7 32 7 Q50 7 50 31 Z" ${s("#E8F3F6")}/>` + leaf(s, 24, 28, 17, -40, TYPE_COLORS[t]) + `<path d="M14 33 L50 33 Q50 57 32 57 Q14 57 14 33 Z" ${s(TYPE_COLORS[t])}/>` + shade("M40 34 L50 34 Q50 55 34 57 Q46 50 40 34 Z") + `<rect x="11" y="28" width="42" height="7" rx="3" ${s(LIGHT[t], 2.6)}/><path d="M20 22 Q21 15 27 12" ${s("lightline", 3.6)}/><path d="M20 44 Q22 49 26 51" ${s("lightline", 2.6)}/>`
+    );
+    ICONS["type_" + t] = () => `<circle cx="32" cy="32" r="24" ${s(TYPE_COLORS[t])}/>` + SYMBOL[t]();
+  });
+  var ICON_KEYS = Object.keys(ICONS);
+  function renderIcon(key) {
+    const fn = ICONS[key];
+    const inner = fn ? fn() : `<circle cx="32" cy="32" r="22" ${s("#C9CCC6")}/>`;
+    return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${key}"><g filter="url(#rc-stk-s)"><g filter="url(#rc-wob-s)">${inner}</g></g></svg>`;
+  }
+  return __toCommonJS(index_exports);
+})();
+
+(function(){
+  var A = RCArt;
+  document.body.insertAdjacentHTML('afterbegin', A.ART_DEFS_SVG + '<style>' + A.ART_CSS + '</style>');
+  function el(id){ return document.getElementById(id); }
+  function card(label, arts){ return '<div class="card"><div class="pair">' + arts.map(function(a){ return '<div class="art">' + a + '</div>'; }).join('') + '</div><span>' + label + '</span></div>'; }
+  el('remon').innerHTML = A.REMON_ART_KEYS.map(function(k){ return card(k, [A.renderRemon(k), A.renderRemon(k, {shiny:true})]); }).join('');
+  el('mood').innerHTML = ['petring_1','boxbear_2','candol_3','glassbird_1','vinylghost_2','voltmouse_3','fabricsheep_2','reverse_1'].map(function(k){ return card(k, [A.renderRemon(k, {mood:'hurt'}), A.renderRemon(k, {mood:'happy'})]); }).join('');
+  el('boss').innerHTML = A.BOSS_KEYS.map(function(k){ return card(k, [A.renderBoss(k), A.renderBoss(k, {hurt:true})]); }).join('');
+  var g = '';
+  ['bright','dim'].forEach(function(m){ [1,2,3,4].forEach(function(st){ g += '<div class="card"><div class="art">' + A.renderGarden(st, m) + '</div><span>garden ' + st + ' · ' + m + '</span></div>'; }); });
+  el('garden').innerHTML = g;
+  el('icons').innerHTML = A.ICON_KEYS.map(function(k){ return '<div class="card"><div class="art">' + A.renderIcon(k) + '</div><span>' + k + '</span></div>'; }).join('');
+})();
+</script>
+</body>
+</html>
