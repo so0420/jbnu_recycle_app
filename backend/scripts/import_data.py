@@ -104,7 +104,7 @@ async def main(data_dir: Path, force: bool) -> None:
         for i in range(0, len(rows), CHUNK):
             stmt = mysql_insert(Region).values(rows[i:i + CHUNK])
             await db.execute(stmt.on_duplicate_key_update(
-                {c: getattr(stmt.inserted, c) for c in rows[0] if c != "code"}))
+                {c: stmt.inserted[c] for c in rows[0] if c != "code"}))
         await db.commit()
         print(f"zones {len(zones)}, regions {len(rows)}")
 
@@ -142,7 +142,8 @@ async def main(data_dir: Path, force: bool) -> None:
 async def _upsert_places(db, batch: list[dict]) -> int:
     stmt = mysql_insert(Place).values(batch)
     cols = [c for c in batch[0] if c not in ("source", "source_id")]
-    await db.execute(stmt.on_duplicate_key_update({c: stmt.inserted[c] for c in cols}   # .items 같은 이름이 메서드와 겹치지 않게 [] 로))
+    # stmt.inserted.items 는 메서드라서 열 이름은 [] 로 꺼낸다
+    await db.execute(stmt.on_duplicate_key_update({c: stmt.inserted[c] for c in cols}))
     return len(batch)
 
 
