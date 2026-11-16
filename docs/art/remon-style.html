@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>리몬 그림체 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 재생지 톤의 시트 위에 스티커처럼 붙인 캐릭터 카드. 상단 스타일 전환 → 아래 모든 그림이 같이 바뀜 */
+:root{
+  --bg:#E9ECE6; --surface:#F7F8F5; --ink:#1D231F; --muted:#5B655D; --rule:#D3D9D0;
+  --accent:#1E7A4C; --accent-ink:#FFFFFF; --paper:#F0EEE6;
+  --t-plastic:#2A63C4; --t-paper:#8A5A2B; --t-metal:#5E6672; --t-glass:#2E7D4F; --t-vinyl:#7A55B0; --t-boss:#B23A2E;
+  --display:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141916; --surface:#1D231F; --ink:#E6EBE6; --muted:#9BA69D; --rule:#2E3731;
+  --accent:#5BC08A; --accent-ink:#0F1A13;
+  --t-plastic:#7FA8F0; --t-paper:#D4A574; --t-metal:#AEB6C2; --t-glass:#77C79A; --t-vinyl:#B898E6; --t-boss:#F0806F;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141916; --surface:#1D231F; --ink:#E6EBE6; --muted:#9BA69D; --rule:#2E3731;
+  --accent:#5BC08A; --accent-ink:#0F1A13;
+  --t-plastic:#7FA8F0; --t-paper:#D4A574; --t-metal:#AEB6C2; --t-glass:#77C79A; --t-vinyl:#B898E6; --t-boss:#F0806F;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px;display:flex;flex-direction:column;gap:40px}
+header{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,5vw,44px);line-height:1.15;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0;text-wrap:balance}
+p{margin:0;max-width:65ch}
+.lede{color:var(--muted)}
+.switch{display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{font:inherit;font-weight:600;border:1.5px solid var(--rule);background:transparent;color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.seg button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.style-note{color:var(--muted);font-size:14px}
+section{display:flex;flex-direction:column;gap:14px}
+.sec-head{display:flex;flex-direction:column;gap:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.grid.three{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:12px 12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stage{aspect-ratio:1/1;max-width:100%;border-radius:10px;display:grid;place-items:center;overflow:hidden}
+.stage svg,.stage canvas{width:100%;height:100%;display:block}
+.stage canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:86%;height:86%}
+.mode-riso .stage{background:var(--paper)}
+.name{font-family:var(--display);font-size:20px;line-height:1.2}
+.meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:.06em;border:1.5px solid currentColor;border-radius:999px;padding:1px 8px}
+.chip.plastic{color:var(--t-plastic)}.chip.paper{color:var(--t-paper)}.chip.metal{color:var(--t-metal)}
+.chip.glass{color:var(--t-glass)}.chip.vinyl{color:var(--t-vinyl)}.chip.bosschip{color:var(--t-boss)}
+.small{font-size:13px;color:var(--muted)}
+.evo{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:8px}
+.arrow{font-family:var(--display);font-size:26px;color:var(--muted)}
+@media (max-width:640px){.evo{grid-template-columns:1fr}.arrow{transform:rotate(90deg);justify-self:center;line-height:1}}
+.boss{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:20px;align-items:center}
+@media (max-width:640px){.boss{grid-template-columns:1fr}}
+.boss .stage{background:transparent}
+ul.facts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;max-width:65ch}
+.bob,.float{transform-box:fill-box}
+.bob{animation:bob 2.6s ease-in-out infinite;transform-origin:50% 100%}
+.float{animation:float 3.2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-3px) scale(1.01,.99)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.bob,.float{animation:none}}
+footer{border-top:1px solid var(--rule);padding-top:16px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="wob" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="stk" x="-15%" y="-15%" width="130%" height="130%">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="5" result="d"/>
+      <feFlood flood-color="#FFFFFF" result="w0"/><feComposite in="w0" in2="d" operator="in" result="w"/>
+      <feOffset in="d" dx="0" dy="3" result="o"/>
+      <feFlood flood-color="#000000" flood-opacity="0.16" result="s0"/><feComposite in="s0" in2="o" operator="in" result="s"/>
+      <feMerge><feMergeNode in="s"/><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="rwob" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="11"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.18  0 0 0 0 0.2  0 0 0 0 0.28  0 0 0 -1.6 1.05"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="wrap" id="app">
+  <header>
+    <span class="eyebrow">리사이클 앱 · 캐릭터 시안 v0.1</span>
+    <h1>리몬 그림체 시안</h1>
+    <p class="lede">아래 그림은 모두 이 페이지의 자바스크립트가 SVG로 직접 그린 것입니다. 같은 캐릭터 코드를 세 가지 방식으로 그려 볼 수 있습니다. 팀에서 그림체 하나를 고르면 나머지 리몬과 보스를 그 방식으로 만듭니다.</p>
+  </header>
+
+  <div class="switch" role="group" aria-labelledby="sw-label">
+    <span class="eyebrow" id="sw-label">그림체 고르기</span>
+    <div class="seg">
+      <button type="button" id="mode-sticker" data-mode="sticker" aria-pressed="true">A 스티커</button>
+      <button type="button" id="mode-riso" data-mode="riso" aria-pressed="false">B 리소 인쇄</button>
+      <button type="button" id="mode-pixel" data-mode="pixel" aria-pressed="false">C 도트</button>
+    </div>
+    <p class="style-note" id="style-note"></p>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <h2>기본 5종 (1단계)</h2>
+      <p class="small">각 리몬의 몸은 실제로 버리는 물건 모양에서 가져왔습니다. 아이가 봐도 "저건 페트병이구나" 하고 알아볼 수 있어야 합니다.</p>
+    </div>
+    <div class="grid" id="roster"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>진화: 페트링</h2>
+      <p class="small">진화할수록 라벨이 벗겨집니다. 라벨 떼기 습관 퀘스트를 그림에서도 보여 줍니다.</p>
+    </div>
+    <div class="evo" id="evo"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>변종</h2>
+      <p class="small">희귀와 반짝이는 색과 소품만 바꿔서 같은 코드로 만듭니다. 그림을 새로 그릴 필요가 없습니다.</p>
+    </div>
+    <div class="grid three" id="variants"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>보스 시안: 라벨 골렘</h2>
+    </div>
+    <div class="card boss">
+      <div class="stage" id="boss"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+        <div class="meta"><span class="name">라벨 골렘</span><span class="chip bosschip">BOSS · 약점 유리</span></div>
+        <p>페트병과 캔을 라벨로 칭칭 감아 만든 오염 괴물입니다. 라벨 보호막이 있는 동안 받는 피해가 70% 줄어듭니다. 유리 리몬의 치명타로 보호막부터 깨야 합니다.</p>
+        <p class="small">배우는 습관: 라벨은 떼서 따로 버리기</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>이 방식의 장점</h2></div>
+    <ul class="facts">
+      <li>리몬 1종은 그림 코드 약 30~50줄, SVG로 2~4KB입니다. 앱에 그대로 넣어도 가볍습니다.</li>
+      <li>색만 바꾸면 희귀·반짝이가 나오고, 팔·소품을 더하면 진화 단계가 됩니다. 37칸 도감을 원화 22장 없이 채울 수 있습니다.</li>
+      <li>SVG라서 숨쉬기, 흔들기, 피격 같은 애니메이션을 CSS로 바로 붙일 수 있습니다.</li>
+      <li>사람이 정한 도형으로 그리기 때문에 이미지 생성 AI 특유의 매끈한 광택이나 뭉개진 손 같은 흔적이 없습니다.</li>
+    </ul>
+  </section>
+
+  <footer>시안 단계입니다. 표정, 비율, 색은 팀 의견을 받아 고칩니다. 그림체가 정해지면 나머지 32칸과 보스 4종을 같은 방식으로 만듭니다.</footer>
+</div>
+
+<script>
+(function(){
+  const LINE = '#2A2622';
+  const RISO_B = '#2F5AA8', RISO_P = '#EE4F98', WHITE = '#FFFFFF';
+  const PAL = {
+    pet:   {body:'#CFE8F4', dark:'#9AC6DE', acc:'#E5553C', acc2:'#2C6BCB', cheek:'#F3A0A6'},
+    petR:  {body:'#C98C52', dark:'#A26A36', acc:'#D3263B', acc2:'#D3263B', cheek:'#F3A0A6'},
+    petS:  {body:'#F6E6A2', dark:'#E1C562', acc:'#8E62CF', acc2:'#EDAE30', cheek:'#F49DB8'},
+    box:   {body:'#C99A62', dark:'#A97A45', acc:'#EBDBBB', acc2:'#7E5530', cheek:'#E99A86'},
+    can:   {body:'#C8CDD5', dark:'#99A1AD', acc:'#D8402F', acc2:'#7B8391', cheek:'#F0A0A0'},
+    glass: {body:'#8DCAA1', dark:'#5FA67A', acc:'#C8A46B', acc2:'#E8B748', cheek:'#F2A39B'},
+    vinyl: {body:'#F2EFF6', dark:'#D3CBE2', acc:'#6FB5E6', acc2:'#6FB5E6', cheek:'#F4A7BD'},
+    golem: {body:'#8B87A1', dark:'#68637E', acc:'#EFC83E', acc2:'#E4473A', cheek:'#000000'}
+  };
+
+  // role -> SVG 속성. 같은 도형을 그림체마다 다르게 칠한다
+  function styler(mode, pal){
+    return function(role, w){
+      if(mode === 'riso'){
+        if(role === 'line') return `fill="none" stroke="${RISO_B}" stroke-width="${w||3.4}" stroke-linecap="round" stroke-linejoin="round"`;
+        if(role === 'lightline') return `fill="none" stroke="${WHITE}" stroke-opacity=".85" stroke-width="5" stroke-linecap="round"`;
+        const m = {body:[RISO_B,.22], dark:[RISO_B,.48], acc:[RISO_P,.82], acc2:[RISO_P,.5], light:[WHITE,.85], eye:[RISO_B,1], cheek:[RISO_P,.5], spark:[RISO_P,.9], hi:[WHITE,1]};
+        const v = m[role] || [RISO_B,.3];
+        return `fill="${v[0]}" fill-opacity="${v[1]}"`;
+      }
+      const sw = mode === 'pixel' ? 7 : 4.5;
+      if(role === 'line') return `fill="none" stroke="${LINE}" stroke-width="${(w||3.6)*(mode==='pixel'?1.5:1)}" stroke-linecap="round" stroke-linejoin="round"`;
+      if(role === 'lightline') return `fill="none" stroke="#FFFFFF" stroke-opacity=".85" stroke-width="5" stroke-linecap="round"`;
+      if(role === 'eye') return `fill="${LINE}"`;
+      if(role === 'hi') return `fill="#FFFFFF"`;
+      if(role === 'light') return `fill="#FFFFFF" fill-opacity=".8"`;
+      if(role === 'cheek') return `fill="${pal.cheek}" fill-opacity=".9"`;
+      if(role === 'dark') return `fill="${pal.dark}"`;
+      if(role === 'spark') return `fill="#FFD447" stroke="${LINE}" stroke-width="${sw*0.7}" stroke-linejoin="round"`;
+      return `fill="${pal[role]}" stroke="${LINE}" stroke-width="${sw}" stroke-linejoin="round"`;
+    };
+  }
+  // 리소 인쇄: 분홍 잉크 판을 살짝 어긋나게
+  function pinkShift(mode){ return mode === 'riso' ? ' transform="translate(2.4 -1.6)"' : ''; }
+
+  function face(s, x, y, o){
+    o = o || {}; const k = o.k || 1, g = (o.gap || 19) * k; let out = '';
+    if(o.cheeks !== false){
+      out += `<ellipse cx="${x-g-11*k}" cy="${y+12*k}" rx="${7*k}" ry="${4.2*k}" ${s('cheek')}/>`;
+      out += `<ellipse cx="${x+g+11*k}" cy="${y+12*k}" rx="${7*k}" ry="${4.2*k}" ${s('cheek')}/>`;
+    }
+    [-g, g].forEach(function(dx, i){
+      const ex = x + dx;
+      if(o.eye === 'cool'){
+        out += `<path d="M${ex-7*k} ${y-1*k} A${7*k} ${8*k} 0 0 0 ${ex+7*k} ${y-1*k} Z" ${s('eye')}/>`;
+        out += `<path d="M${ex-8*k} ${y-2*k} L${ex+8*k} ${y-2*k}" ${s('line',3.2)}/>`;
+      } else {
+        out += `<ellipse cx="${ex}" cy="${y}" rx="${6.5*k}" ry="${8*k}" ${s('eye')}/>`;
+        out += `<circle cx="${ex-2*k}" cy="${y-3*k}" r="${2.3*k}" ${s('hi')}/>`;
+      }
+      if(o.brow){
+        const dir = i === 0 ? 1 : -1;
+        out += `<path d="M${ex-8*k*dir} ${y-14*k} L${ex+7*k*dir} ${y-10*k}" ${s('line',3.4)}/>`;
+      }
+    });
+    if(o.mouth !== false){
+      if(o.mouth === 'smirk') out += `<path d="M${x-5*k} ${y+12*k} Q${x+2*k} ${y+16*k} ${x+8*k} ${y+9*k}" ${s('line')}/>`;
+      else if(o.mouth === 'open') out += `<path d="M${x-7*k} ${y+10*k} Q${x} ${y+21*k} ${x+7*k} ${y+10*k} Z" ${s('eye')}/>`;
+      else out += `<path d="M${x-6*k} ${y+11*k} Q${x} ${y+17*k} ${x+6*k} ${y+11*k}" ${s('line')}/>`;
+    }
+    return out;
+  }
+  function star(s, x, y, r){
+    return `<path d="M${x} ${y-r} Q${x} ${y} ${x+r} ${y} Q${x} ${y} ${x} ${y+r} Q${x} ${y} ${x-r} ${y} Q${x} ${y} ${x} ${y-r} Z" ${s('spark')}/>`;
+  }
+  function scaleFrom(scale, inner){
+    return `<g transform="translate(100 186) scale(${scale}) translate(-100 -186)">${inner}</g>`;
+  }
+
+  // ---------- 캐릭터 ----------
+  function petring(stage, variant){
+    return function(s, mode){
+      const P = pinkShift(mode);
+      let back = '', front = '';
+      if(stage === 3){
+        const wing = `<path d="M64 104 C34 76 10 90 15 122 C27 113 36 119 38 130 C46 119 56 123 62 134 Z" ${s('body')}/>`+
+                     `<path d="M58 110 L28 101 M58 118 L30 119 M59 126 L42 129" ${s('line',2.6)}/>`;
+        back += wing + `<g transform="translate(200 0) scale(-1 1)">${wing}</g>`;
+      }
+      if(stage === 2){
+        back += `<path d="M62 120 Q44 124 40 106" ${s('line',4)}/><circle cx="40" cy="100" r="8" ${s('acc2')}${P}/>`;
+        back += `<path d="M138 120 Q158 114 162 96" ${s('line',4)}/><circle cx="162" cy="90" r="8" ${s('acc2')}${P}/>`;
+      }
+      let b = back;
+      b += `<ellipse cx="80" cy="181" rx="12" ry="7" ${s('acc2')}${P}/><ellipse cx="120" cy="181" rx="12" ry="7" ${s('acc2')}${P}/>`;
+      if(variant === 'rare') b += `<g transform="rotate(16 100 34)"><rect x="96" y="0" width="9" height="36" rx="3" ${s('acc')}${P}/></g>`;
+      b += `<path d="M86 56 C86 72 60 74 60 98 L60 160 Q60 177 77 177 L123 177 Q140 177 140 160 L140 98 C140 74 114 72 114 56 Z" ${s('body')}/>`;
+      b += `<path d="M126 96 C132 104 133 112 133 122 L133 158 Q133 170 121 170 L117 170 Q126 165 126 154 Z" ${s('dark')}/>`;
+      b += `<rect x="81" y="44" width="38" height="13" rx="4" ${s('acc2')}${P}/>`;
+      if(stage === 3) b += `<path d="M84 46 L84 26 L92 35 L100 22 L108 35 L116 26 L116 46 Z" ${s('acc2')}${P}/>`;
+      else b += `<rect x="85" y="28" width="30" height="18" rx="5" ${s('acc2')}${P}/>`;
+      b += `<rect x="68" y="98" width="7" height="24" rx="3.5" ${s('light')}/>`;
+      if(stage === 1) b += `<rect x="60" y="130" width="80" height="24" ${s('acc')}${P}/>`;
+      if(stage === 2){
+        b += `<path d="M60 130 L116 130 L116 154 L60 154 Z" ${s('acc')}${P}/>`;
+        b += `<path d="M116 130 L150 119 L147 147 L116 154 Z" ${s('acc')}${P}/>`;
+      }
+      if(stage === 3){
+        b += `<rect x="70" y="132" width="5" height="30" rx="2.5" ${s('light')}/><path d="M84 160 Q100 168 116 160" ${s('lightline')}/>`;
+      }
+      b += face(s, 100, 108, stage === 1 ? {} : stage === 2 ? {brow:true, mouth:'open'} : {eye:'cool', mouth:'smirk'});
+      if(variant === 'shiny' || stage === 3){
+        b += star(s, 40, 52, 9) + star(s, 160, 64, 7) + star(s, 150, 30, 5);
+      }
+      const sc = stage === 1 ? 1 : stage === 2 ? 1.05 : 1.08;
+      return scaleFrom(sc, b);
+    };
+  }
+
+  function boxbear(s, mode){
+    const P = pinkShift(mode); let b = '';
+    b += `<ellipse cx="78" cy="181" rx="12" ry="7" ${s('acc2')}${P}/><ellipse cx="122" cy="181" rx="12" ry="7" ${s('acc2')}${P}/>`;
+    b += `<g transform="rotate(-14 66 62)"><rect x="50" y="46" width="32" height="28" rx="7" ${s('body')}/><rect x="58" y="53" width="16" height="14" rx="4" ${s('acc2')}${P}/></g>`;
+    b += `<g transform="rotate(14 134 62)"><rect x="118" y="46" width="32" height="28" rx="7" ${s('body')}/><rect x="126" y="53" width="16" height="14" rx="4" ${s('acc2')}${P}/></g>`;
+    b += `<rect x="50" y="64" width="100" height="112" rx="9" ${s('body')}/>`;
+    b += `<rect x="132" y="70" width="11" height="100" rx="5" ${s('dark')}/>`;
+    b += `<path d="M50 86 L150 86" ${s('line',3)}/>`;
+    b += `<rect x="90" y="64" width="20" height="22" ${s('acc')}${P}/>`;
+    b += `<ellipse cx="100" cy="132" rx="21" ry="15" ${s('acc')}${P}/>`;
+    b += `<ellipse cx="100" cy="126" rx="6.5" ry="4.8" ${s('eye')}/>`;
+    b += `<path d="M93 134 Q100 141 107 134" ${s('line',3.2)}/>`;
+    b += `<path d="M64 162 L72 149 L80 162 Z" ${s('line',2.6)}/>`;
+    b += face(s, 100, 106, {gap:24, mouth:false});
+    return b;
+  }
+
+  function candol(s, mode){
+    const P = pinkShift(mode); let b = '';
+    b += `<ellipse cx="80" cy="181" rx="12" ry="7" ${s('acc2')}/><ellipse cx="120" cy="181" rx="12" ry="7" ${s('acc2')}/>`;
+    b += `<ellipse cx="111" cy="38" rx="10" ry="6" ${s('line',3.6)}/><path d="M105 44 L100 50" ${s('line',3.6)}/>`;
+    b += `<rect x="62" y="50" width="76" height="126" rx="12" ${s('body')}/>`;
+    b += `<rect x="121" y="62" width="10" height="108" rx="5" ${s('dark')}/>`;
+    b += `<ellipse cx="100" cy="52" rx="38" ry="10" ${s('acc2')}/><ellipse cx="100" cy="52" rx="27" ry="6" ${s('dark')}/>`;
+    b += `<rect x="62" y="124" width="76" height="32" ${s('acc')}${P}/>`;
+    b += `<rect x="70" y="64" width="8" height="48" rx="4" ${s('light')}/>`;
+    b += `<path d="M139 88 L131 95 L139 102" ${s('line',3)}/>`;
+    b += face(s, 100, 96, {gap:17});
+    return b;
+  }
+
+  function glassbird(s, mode){
+    const P = pinkShift(mode); let b = '';
+    b += `<path d="M92 174 L92 186 M112 174 L112 186 M85 186 L99 186 M105 186 L119 186" ${s('line',3.4)}/>`;
+    b += `<path d="M60 128 L24 106 L30 148 Z" ${s('body')}/>`;
+    b += `<rect x="88" y="46" width="32" height="50" rx="12" ${s('body')}/>`;
+    b += `<rect x="90" y="30" width="28" height="20" rx="5" ${s('acc')}${P}/>`;
+    b += `<circle cx="104" cy="130" r="50" ${s('body')}/>`;
+    b += `<ellipse cx="139" cy="134" rx="8" ry="28" ${s('dark')}/>`;
+    b += `<path d="M66 126 Q56 152 82 164 Q92 146 85 128 Z" ${s('body')}/>`;
+    b += `<path d="M70 140 Q76 146 82 146 M72 151 Q78 156 84 155" ${s('line',2.4)}/>`;
+    b += `<path d="M76 104 Q66 124 74 146" ${s('lightline')}/>`;
+    b += `<rect x="94" y="54" width="5" height="24" rx="2.5" ${s('light')}/>`;
+    b += face(s, 108, 114, {gap:17, mouth:false});
+    b += `<path d="M101 128 L115 128 L108 138 Z" ${s('acc2')}${P}/>`;
+    return b;
+  }
+
+  function vinylghost(s, mode){
+    const P = pinkShift(mode); let b = '';
+    const tube = function(d){
+      if(mode === 'riso') return `<path d="${d}" fill="none" stroke="${RISO_B}" stroke-opacity=".35" stroke-width="10" stroke-linecap="round"/>`;
+      const sw = mode === 'pixel' ? 18 : 15;
+      return `<path d="${d}" fill="none" stroke="${LINE}" stroke-width="${sw}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${PAL.vinyl.body}" stroke-width="${sw-9}" stroke-linecap="round"/>`;
+    };
+    b += tube('M72 66 C70 30 94 30 92 66') + tube('M108 66 C106 30 130 30 128 66');
+    b += `<path d="M58 62 L142 62 L150 158 Q140 172 128 162 Q116 176 100 164 Q84 176 72 162 Q60 172 50 158 Z" ${s('body')}/>`;
+    b += `<path d="M134 84 L141 150 Q136 156 131 152 L126 86 Z" ${s('dark')}/>`;
+    b += `<path d="M58 62 L142 62 L143 77 L57 77 Z" ${s('acc')}${P}/>`;
+    b += `<path d="M68 136 L77 125 M121 94 L127 107 M84 152 L91 145" ${s('line',2.4)}/>`;
+    b += face(s, 100, 112, {gap:18});
+    return b;
+  }
+
+  function golem(s, mode){
+    const P = pinkShift(mode); let b = '';
+    b += `<rect x="62" y="150" width="30" height="34" rx="6" ${s('body')}/><rect x="108" y="150" width="30" height="34" rx="6" ${s('body')}/>`;
+    b += `<rect x="20" y="78" width="30" height="74" rx="13" ${s('body')}/><rect x="150" y="78" width="30" height="74" rx="13" ${s('body')}/>`;
+    b += `<rect x="46" y="64" width="108" height="98" rx="16" ${s('body')}/>`;
+    b += `<rect x="134" y="74" width="12" height="80" rx="6" ${s('dark')}/>`;
+    b += `<g transform="rotate(-17 100 112)"><rect x="28" y="100" width="144" height="22" ${s('acc')}${P}/><path d="M60 105 L60 117 M64 105 L64 117 M70 105 L70 117 M73 105 L73 117 M78 105 L78 117" ${s('line',2)}/></g>`;
+    b += `<g transform="rotate(13 100 136)"><rect x="34" y="128" width="132" height="18" ${s('acc')}${P}/></g>`;
+    b += `<path d="M58 80 L66 90 L62 98" ${s('line',2.6)}/>`;
+    b += `<rect x="68" y="26" width="64" height="46" rx="11" ${s('body')}/>`;
+    b += `<rect x="116" y="32" width="9" height="34" rx="4.5" ${s('dark')}/>`;
+    b += `<path d="M78 42 L96 50 L94 58 L78 55 Z" ${s('acc2')}${P}/><path d="M122 42 L104 50 L106 58 L122 55 Z" ${s('acc2')}${P}/>`;
+    b += `<path d="M84 66 L90 62 L96 66 L102 62 L108 66 L114 62" ${s('line',3.2)}/>`;
+    return b;
+  }
+
+  // ---------- 렌더 ----------
+  function svgString(drawFn, palKey, mode, opts){
+    opts = opts || {};
+    const s = styler(mode, PAL[palKey]);
+    const inner = drawFn(s, mode);
+    const groundRx = opts.groundRx || 44;
+    const ground = `<ellipse cx="100" cy="188" rx="${groundRx}" ry="6" fill="${mode==='riso'?RISO_B:'#000000'}" fill-opacity="${mode==='riso'?.14:.12}"/>`;
+    const animCls = opts.float ? 'float' : 'bob';
+    if(mode === 'sticker'){
+      return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img">${ground}<g class="${animCls}"><g filter="url(#stk)"><g filter="url(#wob)">${inner}</g></g></g></svg>`;
+    }
+    if(mode === 'riso'){
+      return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img">${ground}<g class="${animCls}"><g filter="url(#rwob)">${inner}</g></g><rect width="200" height="200" filter="url(#grain)" opacity=".5" style="mix-blend-mode:multiply"/></svg>`;
+    }
+    return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+  }
+
+  function hexToRgb(h){ h = h.replace('#',''); return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]; }
+
+  function renderPixel(el, drawFn, palKey){
+    const pal = PAL[palKey];
+    const colors = [LINE, '#FFFFFF', '#FFD447', pal.body, pal.dark, pal.acc, pal.acc2, pal.cheek].map(hexToRgb);
+    const N = 52;
+    const img = new Image();
+    const cv = document.createElement('canvas'); cv.width = N; cv.height = N;
+    cv.setAttribute('role','img');
+    el.innerHTML = ''; el.appendChild(cv);
+    img.onload = function(){
+      const ctx = cv.getContext('2d');
+      ctx.clearRect(0,0,N,N); ctx.drawImage(img, 0, 0, N, N);
+      const d = ctx.getImageData(0,0,N,N), a = d.data;
+      for(let i = 0; i < a.length; i += 4){
+        if(a[i+3] < 120){ a[i+3] = 0; continue; }
+        let best = 0, bd = 1e9;
+        for(let c = 0; c < colors.length; c++){
+          const dr = a[i]-colors[c][0], dg = a[i+1]-colors[c][1], db = a[i+2]-colors[c][2];
+          const dist = dr*dr*0.3 + dg*dg*0.59 + db*db*0.11;
+          if(dist < bd){ bd = dist; best = c; }
+        }
+        a[i] = colors[best][0]; a[i+1] = colors[best][1]; a[i+2] = colors[best][2]; a[i+3] = 255;
+      }
+      ctx.putImageData(d, 0, 0);
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString(drawFn, palKey, 'pixel'));
+  }
+
+  function draw(el, item, mode){
+    el.setAttribute('aria-label', item.name + ' 그림');
+    if(mode === 'pixel') renderPixel(el, item.draw, item.pal);
+    else el.innerHTML = svgString(item.draw, item.pal, mode, item.opts);
+  }
+
+  const ROSTER = [
+    {name:'페트링', type:'플라스틱', cls:'plastic', pal:'pet', draw:petring(1), desc:'라벨을 떼 주면 진화한다. 투명할수록 강해지는 힐러.'},
+    {name:'박스곰', type:'종이', cls:'paper', pal:'box', draw:boxbear, desc:'테이프를 떼고 펼쳐 주면 진화. 아군을 감싸는 서포터.'},
+    {name:'캔돌이', type:'금속', cls:'metal', pal:'can', draw:candol, desc:'헹군 캔을 좋아한다. 앞줄을 지키는 탱커.'},
+    {name:'유리새', type:'유리', cls:'glass', pal:'glass', draw:glassbird, desc:'뚜껑을 분리해 주면 진화. 약하지만 공격력이 가장 높다.'},
+    {name:'비닐리', type:'비닐', cls:'vinyl', pal:'vinyl', draw:vinylghost, desc:'깨끗한 비닐만 먹는다. 적을 휘감아 묶는 방해꾼.', opts:{float:true, groundRx:34}}
+  ];
+  const EVO = [
+    {name:'페트링', pal:'pet', draw:petring(1), cap:'1단계 · 라벨이 붙어 있음'},
+    {name:'페트롤', pal:'pet', draw:petring(2), cap:'2단계 · Lv10 + 라벨 떼기 5회'},
+    {name:'페트라곤', pal:'pet', draw:petring(3), cap:'3단계 · Lv20 + 라벨 떼기 15회'}
+  ];
+  const VARIANTS = [
+    {name:'페트링', tag:'일반', pal:'pet', draw:petring(1), cap:'캡슐에서 75%'},
+    {name:'콜라 페트링', tag:'희귀', pal:'petR', draw:petring(1,'rare'), cap:'캡슐에서 25% · 갈색 병과 빨대'},
+    {name:'반짝이 페트링', tag:'반짝이', pal:'petS', draw:petring(1,'shiny'), cap:'2% · 깨끗한 배출 100%면 4%'}
+  ];
+  const BOSS = {name:'라벨 골렘', pal:'golem', draw:golem, opts:{groundRx:72}};
+
+  const NOTES = {
+    sticker:'A 스티커: 굵은 외곽선, 납작한 색, 살짝 떨리는 손그림 선, 흰 테두리. 앱 아이콘과 알림에 잘 어울리고 가장 무난합니다.',
+    riso:'B 리소 인쇄: 파랑·분홍 두 가지 잉크만 쓰고 일부러 판을 어긋나게 찍은 인쇄물 느낌. 개성이 가장 강하지만 색으로 타입을 구분하기 어렵습니다.',
+    pixel:'C 도트: 52×52 칸, 캐릭터마다 8색 이하. 레트로 게임 느낌이고 작은 화면에서도 또렷합니다. 세밀한 표정은 표현하기 어렵습니다.'
+  };
+
+  const $ = function(id){ return document.getElementById(id); };
+  function cardHTML(i, extra){
+    return `<div class="stage" id="${i}"></div>${extra}`;
+  }
+
+  function build(){
+    $('roster').innerHTML = ROSTER.map(function(r, i){
+      return `<div class="card">${cardHTML('r'+i, `<div class="meta"><span class="name">${r.name}</span><span class="chip ${r.cls}">${r.type}</span></div><p class="small">${r.desc}</p>`)}</div>`;
+    }).join('');
+    $('evo').innerHTML = EVO.map(function(e, i){
+      const card = `<div class="card">${cardHTML('e'+i, `<span class="name">${e.name}</span><p class="small">${e.cap}</p>`)}</div>`;
+      return i < EVO.length - 1 ? card + '<span class="arrow" aria-hidden="true">→</span>' : card;
+    }).join('');
+    $('variants').innerHTML = VARIANTS.map(function(v, i){
+      return `<div class="card">${cardHTML('v'+i, `<div class="meta"><span class="name">${v.name}</span><span class="chip plastic">${v.tag}</span></div><p class="small">${v.cap}</p>`)}</div>`;
+    }).join('');
+  }
+
+  function render(mode){
+    $('app').className = 'wrap mode-' + mode;
+    ROSTER.forEach(function(r, i){ draw($('r'+i), r, mode); });
+    EVO.forEach(function(e, i){ draw($('e'+i), e, mode); });
+    VARIANTS.forEach(function(v, i){ draw($('v'+i), v, mode); });
+    draw($('boss'), BOSS, mode);
+    $('style-note').textContent = NOTES[mode];
+    document.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.mode === mode)); });
+    try { localStorage.setItem('remon-mode', mode); } catch(e) {}
+  }
+
+  build();
+  let start = 'sticker';
+  try { const m = localStorage.getItem('remon-mode'); if(m && NOTES[m]) start = m; } catch(e) {}
+  render(start);
+  document.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click', function(){ render(b.dataset.mode); });
+  });
+})();
+</script>
+
+</body>
+</html>
