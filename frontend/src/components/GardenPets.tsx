@@ -45,8 +45,17 @@ export default function GardenPets({ party, dim, lines }: { party: Monster[]; di
         let next: Pet;
         let wait: number;
         if (r < 0.62) {                       // 걷기
-          const x = Math.min(X_MAX, Math.max(X_MIN, p.x + rand(-28, 28)));
-          const y = Math.min(Y_MAX, Math.max(Y_MIN, p.y + rand(-6, 6)));
+          // 다른 리몬과 너무 붙지 않는 자리를 몇 번 골라 본다
+          const others = petsRef.current.filter((_, j) => j !== i);
+          const crowd = (x: number, y: number) => others.reduce((s, q) => s + Math.max(0, 16 - Math.hypot(x - q.x, (y - q.y) * 2)), 0);
+          let x = p.x, y = p.y, best = Infinity;
+          for (let k = 0; k < 6; k++) {
+            const cx = Math.min(X_MAX, Math.max(X_MIN, p.x + rand(-28, 28)));
+            const cy = Math.min(Y_MAX, Math.max(Y_MIN, p.y + rand(-6, 6)));
+            const c = crowd(cx, cy);
+            if (c < best) { best = c; x = cx; y = cy; }
+            if (c === 0) break;
+          }
           const dist = Math.hypot(x - p.x, (y - p.y) * 2.5);
           const dur = Math.max(700, (dist / speed) * 1000);
           next = { ...p, x, y, flip: x < p.x, mode: 'walk', dur, emote: null };
