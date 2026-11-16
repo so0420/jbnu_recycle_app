@@ -8,6 +8,11 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 
+import logging  # noqa: E402
+
+# INSERT IGNORE 로 일부러 중복을 건너뛸 때 나오는 경고는 로그에 남기지 않는다
+logging.getLogger("asyncmy").addFilter(lambda r: "Duplicate entry" not in r.getMessage())
+
 
 engine = create_async_engine(
     settings.database_url,
