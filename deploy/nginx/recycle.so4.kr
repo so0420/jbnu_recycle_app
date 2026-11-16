@@ -1,10 +1,21 @@
-# recycle.so4.kr -> 127.0.0.1:11000
-# Cloudflare Origin Certificate (so4.kr + *.so4.kr)
+# recycle.so4.kr -> 127.0.0.1:11010
+# Cloudflare 프록시 뒤에서 동작. 인증서는 Cloudflare Origin 인증서 (so4.kr + *.so4.kr)
+
+# Cloudflare 가 넘겨준 실제 방문자 IP (없으면 연결 IP).
+# cloudflare-allow 로 Cloudflare 대역만 들어오므로 이 헤더를 믿어도 된다.
+# 앱(uvicorn)은 127.0.0.1 만 신뢰하므로 이 값이 request.client.host → 로그인 rate limit 키가 된다.
+map $http_cf_connecting_ip $recycle_client_ip {
+    ""      $remote_addr;
+    default $http_cf_connecting_ip;
+}
 
 server {
     listen 80;
     listen [::]:80;
     server_name recycle.so4.kr;
+
+    # Cloudflare 대역만 허용 (직접 IP 접근 차단)
+    include snippets/cloudflare-allow.conf;
 
     return 301 https://$host$request_uri;
 }
@@ -14,17 +25,20 @@ server {
     listen [::]:443 ssl;
     server_name recycle.so4.kr;
 
+    # Cloudflare 대역만 허용 (직접 IP 접근 차단)
+    include snippets/cloudflare-allow.conf;
+
     ssl_certificate     /etc/ssl/certs/so4.kr.pem;
     ssl_certificate_key /etc/ssl/private/so4.kr.key;
 
     client_max_body_size 12m;
 
     location / {
-        proxy_pass http://127.0.0.1:11000;
+        proxy_pass http://127.0.0.1:11010;
 
         proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP         $recycle_client_ip;
+        proxy_set_header X-Forwarded-For   $recycle_client_ip;
         proxy_set_header X-Forwarded-Proto $scheme;
 
         proxy_http_version 1.1;

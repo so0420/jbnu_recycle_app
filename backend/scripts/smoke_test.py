@@ -1,6 +1,6 @@
 """API 흐름 점검: 가입 → 스타터 → 스캔 → 인증 → 캡슐 → 레벨업 → 레이드.
 
-사용: python scripts/smoke_test.py http://127.0.0.1:11000 [사진.jpg]
+사용: python scripts/smoke_test.py http://127.0.0.1:11010 [사진.jpg]
 테스트 계정을 새로 만든다 (smoke_<랜덤>).
 """
 import io
@@ -12,7 +12,7 @@ import uuid
 import httpx
 from PIL import Image
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:11000"
+BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:11010"
 PHOTO = sys.argv[2] if len(sys.argv) > 2 else None
 
 

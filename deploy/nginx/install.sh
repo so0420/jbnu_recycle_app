@@ -10,5 +10,7 @@ nginx -t
 systemctl reload nginx
 sleep 1
 echo "--- 확인"
-curl -s -o /dev/null -w "로컬 https: %{http_code}\n" --resolve recycle.so4.kr:443:127.0.0.1 -k https://recycle.so4.kr/health || true
+# 직접 접속은 cloudflare-allow 가 403 으로 막으므로 앱은 직접, nginx 는 Cloudflare 를 거쳐 확인
+curl -s -o /dev/null -w "앱 (127.0.0.1:11010): %{http_code}\n" http://127.0.0.1:11010/health || true
+curl -s -o /dev/null -w "Cloudflare 경유 https: %{http_code}\n" https://recycle.so4.kr/health || true
 echo "완료: https://recycle.so4.kr"

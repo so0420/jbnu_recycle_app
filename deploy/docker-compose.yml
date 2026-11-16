@@ -1,5 +1,5 @@
 # 서버: ~/projects/recycle 에서  ./deploy/deploy.sh
-# 앱 127.0.0.1:11000 (nginx → recycle.so4.kr), AI 127.0.0.1:11001
+# 앱 127.0.0.1:11010 (nginx → recycle.so4.kr), AI 127.0.0.1:11001
 name: recycle
 services:
   app:

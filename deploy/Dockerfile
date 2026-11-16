@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 COPY data/ /app/data/
 COPY --from=web /web/dist /app/frontend/dist
-CMD ["sh", "-c", "alembic upgrade head && python -m scripts.import_data --data /app/data && exec uvicorn main:app --host 127.0.0.1 --port 11000 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header"]
+CMD ["sh", "-c", "alembic upgrade head && python -m scripts.import_data --data /app/data && exec uvicorn main:app --host 127.0.0.1 --port 11010 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header"]
