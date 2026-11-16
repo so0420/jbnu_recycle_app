@@ -1,0 +1,14 @@
+{
+  "appId": "kr.so4.recycle",
+  "appName": "리사이클",
+  "webDir": "dist",
+  "server": {
+    "url": "https://recycle.so4.kr",
+    "androidScheme": "https",
+    "allowNavigation": ["recycle.so4.kr", "*.tile.openstreetmap.org", "tile.openstreetmap.org"],
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "backgroundColor": "#E9ECE6"
+  }
+}

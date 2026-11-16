@@ -16,6 +16,7 @@ services:
     volumes:
       - ./runtime/uploads:/data/uploads
       - ./runtime/logs:/data/logs
+      - ./runtime/apk:/data/apk
     depends_on:
       - ollama
     restart: unless-stopped

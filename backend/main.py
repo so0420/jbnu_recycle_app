@@ -26,10 +26,24 @@ from app.utils.log import logger, setup_uvicorn_logging
 from app.utils.custom_exceptions import http_exception_handler, global_exception_handler
 
 
+async def _warm_up_ai() -> None:
+    """서버 시작 때 AI 모델을 미리 메모리에 올려 첫 요청 지연(약 15초)을 없앤다."""
+    await asyncio.sleep(3)
+    try:
+        async with httpx.AsyncClient(timeout=120) as c:
+            await c.post(settings.SYSTEM_ONE_URL, json={
+                "model": settings.SYSTEM_ONE_MODEL, "state": "warm up",
+                "questions": {"q": {"type": "noul", "instructions": "Is this a test?"}}})
+        logger.info("AI 모델 준비 완료")
+    except httpx.HTTPError as e:
+        logger.warning(f"AI 모델 준비 실패: {e!r}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Application startup (env={settings.ENVIRONMENT})")
     task = asyncio.create_task(scheduler.loop())
+    asyncio.create_task(_warm_up_ai())
     yield
     task.cancel()
     await engine.dispose()
@@ -73,6 +87,15 @@ async def health(db: AsyncSession = Depends(get_db)):
     except httpx.HTTPError:
         pass
     return {"status": "ok", "database": "ok", "system_one": ai, "openai": bool(settings.OPENAI_API_KEY)}
+
+
+@app.get("/download/recycle.apk", include_in_schema=False)
+async def apk():
+    f = Path(settings.UPLOAD_DIR).parent / "apk" / "recycle.apk"
+    if not f.is_file():
+        from fastapi import HTTPException
+        raise HTTPException(404, "아직 앱 파일이 없어요")
+    return FileResponse(f, media_type="application/vnd.android.package-archive", filename="recycle.apk")
 
 
 # ---- 프론트(SPA) 서빙: 빌드 결과가 있으면 같은 주소에서 제공 ----

@@ -52,6 +52,9 @@ export default function Login() {
         <button className="btn block" disabled={busy}>{busy ? '확인 중…' : '로그인'}</button>
       </form>
       <Link className="btn ghost block" to="/signup">처음이에요 · 회원가입</Link>
+      {!('Capacitor' in window) && /Android/i.test(navigator.userAgent) && (
+        <a className="btn warn block" href="/download/recycle.apk">안드로이드 앱 받기</a>
+      )}
       <p className="center tiny muted">
         <Link to="/terms">이용약관</Link> · <Link to="/privacy">개인정보 처리방침</Link>
       </p>
