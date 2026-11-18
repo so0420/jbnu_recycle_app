@@ -22,18 +22,16 @@ from app.services import scheduler
 from app.core.config import settings
 from app.core.security import setup_security
 from app.database import engine, get_db
+from app.services.ai import system_one
 from app.utils.log import logger, setup_uvicorn_logging
 from app.utils.custom_exceptions import http_exception_handler, global_exception_handler
 
 
 async def _warm_up_ai() -> None:
-    """서버 시작 때 AI 모델을 미리 메모리에 올려 첫 요청 지연(약 15초)을 없앤다."""
+    """서버 시작 때 AI 모델을 미리 메모리에 올려 첫 요청 지연을 없앤다."""
     await asyncio.sleep(3)
     try:
-        async with httpx.AsyncClient(timeout=120) as c:
-            await c.post(settings.SYSTEM_ONE_URL, json={
-                "model": settings.SYSTEM_ONE_MODEL, "state": "warm up",
-                "questions": {"q": {"type": "noul", "instructions": "Is this a test?"}}})
+        await system_one.warm_up()
         logger.info("AI 모델 준비 완료")
     except httpx.HTTPError as e:
         logger.warning(f"AI 모델 준비 실패: {e!r}")
@@ -82,7 +80,7 @@ async def health(db: AsyncSession = Depends(get_db)):
     ai = "down"
     try:
         async with httpx.AsyncClient(timeout=3) as c:
-            r = await c.get(settings.SYSTEM_ONE_URL.split("/v1/")[0] + "/api/ps")
+            r = await c.get(system_one.base_url() + "/api/ps")
             ai = "ok" if r.status_code == 200 else "down"
     except httpx.HTTPError:
         pass

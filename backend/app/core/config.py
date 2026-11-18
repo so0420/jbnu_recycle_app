@@ -107,8 +107,8 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = True
 
     # ---- AI ----
-    SYSTEM_ONE_URL: str = "http://127.0.0.1:11001/v1/systemone"
-    SYSTEM_ONE_MODEL: str = "clef-flash"
+    SYSTEM_ONE_URL: str = "http://127.0.0.1:11001"          # Ollama 주소
+    SYSTEM_ONE_MODEL: str = "qwen3.5:9b"        # 로컬 멀티모달 LLM
     SYSTEM_ONE_TIMEOUT: float = 40.0
     AI_IMAGE_EDGE: int = 768
     AI_TOP1_THRESHOLD: float = 0.60
