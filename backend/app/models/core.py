@@ -91,8 +91,8 @@ class ClassifyLog(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     photo_path: Mapped[str] = mapped_column(String(200))
     phash: Mapped[str] = mapped_column(String(16), index=True)
-    s1_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    s2_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    s1_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)     # 예전 로컬 AI 답 (지금은 쓰지 않음)
+    s2_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)     # OpenAI 답
     category: Mapped[str | None] = mapped_column(String(30), nullable=True)
     item_label: Mapped[str | None] = mapped_column(String(40), nullable=True)
     judged_by: Mapped[str] = mapped_column(String(20), default="none")

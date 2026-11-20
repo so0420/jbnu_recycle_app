@@ -8,7 +8,6 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import httpx
 from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,26 +21,14 @@ from app.services import scheduler
 from app.core.config import settings
 from app.core.security import setup_security
 from app.database import engine, get_db
-from app.services.ai import system_one
 from app.utils.log import logger, setup_uvicorn_logging
 from app.utils.custom_exceptions import http_exception_handler, global_exception_handler
-
-
-async def _warm_up_ai() -> None:
-    """서버 시작 때 AI 모델을 미리 메모리에 올려 첫 요청 지연을 없앤다."""
-    await asyncio.sleep(3)
-    try:
-        await system_one.warm_up()
-        logger.info("AI 모델 준비 완료")
-    except httpx.HTTPError as e:
-        logger.warning(f"AI 모델 준비 실패: {e!r}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Application startup (env={settings.ENVIRONMENT})")
     task = asyncio.create_task(scheduler.loop())
-    asyncio.create_task(_warm_up_ai())
     yield
     task.cancel()
     await engine.dispose()
@@ -75,16 +62,9 @@ app.include_router(api_router, prefix="/api")
 
 @app.get("/health")
 async def health(db: AsyncSession = Depends(get_db)):
-    """DB·AI 연결 상태를 확인하는 헬스체크."""
+    """DB 연결·AI 설정 상태를 확인하는 헬스체크."""
     await db.execute(text("SELECT 1"))
-    ai = "down"
-    try:
-        async with httpx.AsyncClient(timeout=3) as c:
-            r = await c.get(system_one.base_url() + "/api/ps")
-            ai = "ok" if r.status_code == 200 else "down"
-    except httpx.HTTPError:
-        pass
-    return {"status": "ok", "database": "ok", "system_one": ai, "openai": bool(settings.OPENAI_API_KEY)}
+    return {"status": "ok", "database": "ok", "openai": bool(settings.OPENAI_API_KEY), "model": settings.OPENAI_MODEL}
 
 
 @app.get("/download/recycle.apk", include_in_schema=False)

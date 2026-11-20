@@ -5,7 +5,7 @@ import { fmt } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
 
 interface Stats {
-  users: number; scans_7d: number; judged_by_7d: Record<string, number>; system_one_ratio: number | null;
+  users: number; scans_7d: number; judged_by_7d: Record<string, number>; ai_ratio: number | null;
   avg_latency_ms: number; verifications_7d: Record<string, number>; fail_codes_7d: Record<string, number>;
   openai_tokens_today: number; openai_daily_limit: number;
 }
@@ -30,7 +30,7 @@ export default function Admin() {
         <h3>최근 7일</h3>
         <dl className="kv">
           <dt>가입자</dt><dd>{fmt(s.users)}명</dd>
-          <dt>스캔</dt><dd>{fmt(s.scans_7d)}건 · 1차(로컬 AI)에서 끝난 비율 {s.system_one_ratio !== null ? `${Math.round(s.system_one_ratio * 100)}%` : '-'}</dd>
+          <dt>스캔</dt><dd>{fmt(s.scans_7d)}건 · AI가 바로 판정한 비율 {s.ai_ratio !== null ? `${Math.round(s.ai_ratio * 100)}%` : '-'}</dd>
           <dt>판정 방식</dt><dd>{Object.entries(s.judged_by_7d).map(([k, v]) => `${k} ${v}`).join(' · ') || '-'}</dd>
           <dt>평균 응답</dt><dd>{(s.avg_latency_ms / 1000).toFixed(1)}초</dd>
           <dt>인증</dt><dd>{Object.entries(s.verifications_7d).map(([k, v]) => `${k} ${v}`).join(' · ') || '-'}</dd>

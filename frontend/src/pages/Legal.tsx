@@ -53,7 +53,7 @@ export function Privacy({ embedded }: { embedded?: boolean }) {
       <div className="table-wrap"><table>
         <thead><tr><th>받는 자</th><th>국가</th><th>이전 항목</th><th>시점·방법</th><th>목적</th><th>보유 기간</th></tr></thead>
         <tbody>
-          <tr><td>OpenAI, L.L.C. (privacy@openai.com)</td><td>미국</td><td>사진(이미지) 1장. 아이디·위치는 보내지 않음</td><td>국내 AI가 판단하지 못할 때, 암호화된 통신(HTTPS)으로 전송</td><td>쓰레기 품목·배출 사진 판정</td><td>대화 저장 기능을 끄고 보냄(store=false). OpenAI API 데이터 정책에 따라 학습에 쓰지 않으며 남용 감시 목적으로 최대 30일 보관 후 삭제</td></tr>
+          <tr><td>OpenAI, L.L.C. (privacy@openai.com)</td><td>미국</td><td>사진(이미지) 1장. 아이디·위치는 보내지 않음</td><td>사진을 판정할 때마다, 암호화된 통신(HTTPS)으로 전송</td><td>쓰레기 품목·배출 사진 판정</td><td>대화 저장 기능을 끄고 보냄(store=false). OpenAI API 데이터 정책에 따라 학습에 쓰지 않으며 남용 감시 목적으로 최대 30일 보관 후 삭제</td></tr>
           <tr><td>OpenStreetMap Foundation</td><td>영국</td><td>접속 IP, 보고 있는 지도 영역(지도 그림 요청)</td><td>지도 화면을 볼 때 기기가 직접 요청</td><td>지도 그림 표시</td><td>OSMF 정책에 따름</td></tr>
           <tr><td>Cloudflare, Inc.</td><td>미국 등</td><td>서비스 이용 중 주고받는 모든 통신(접속 IP 포함)</td><td>접속할 때마다, 암호화된 통신으로 중계</td><td>보안 연결(HTTPS) 제공, 공격 차단</td><td>중계 후 저장하지 않음(보안 로그는 Cloudflare 정책에 따름)</td></tr>
         </tbody>

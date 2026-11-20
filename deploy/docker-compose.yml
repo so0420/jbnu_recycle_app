@@ -1,5 +1,5 @@
 # 서버: ~/projects/recycle 에서  ./deploy/deploy.sh
-# 앱 127.0.0.1:11010 (nginx → recycle.so4.kr), AI 127.0.0.1:11001
+# 앱 127.0.0.1:11010 (nginx → recycle.so4.kr). 사진 판정은 OpenAI API
 name: recycle
 services:
   app:
@@ -7,7 +7,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     container_name: recycle-app
-    network_mode: host          # 호스트의 MariaDB(127.0.0.1:3306)·Ollama(127.0.0.1:11001)에 바로 접속
+    network_mode: host          # 호스트의 MariaDB(127.0.0.1:3306)에 바로 접속
     env_file: .env
     environment:
       FRONTEND_DIST: /app/frontend/dist
@@ -17,37 +17,8 @@ services:
       - ./runtime/uploads:/data/uploads
       - ./runtime/logs:/data/logs
       - ./runtime/apk:/data/apk
-    depends_on:
-      - ollama
     # 서버 메모리가 모자라면(OOM) 이 게임 서버가 가장 먼저 정리되게 한다 (다른 서비스 보호, 최대값 1000)
     oom_score_adj: 1000
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options: {max-size: "10m", max-file: "3"}
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: recycle-ollama
-    devices:
-      - /dev/dri
-      - /dev/kfd
-    group_add:
-      - "${RENDER_GID:-992}"
-      - "${VIDEO_GID:-44}"
-    environment:
-      OLLAMA_VULKAN: "1"
-      OLLAMA_IGPU_ENABLE: "1"
-      OLLAMA_KEEP_ALIVE: "-1"
-      OLLAMA_NUM_PARALLEL: "1"
-      OLLAMA_MAX_LOADED_MODELS: "1"
-      OLLAMA_CONTEXT_LENGTH: "8192"
-    volumes:
-      - ./runtime/ollama:/root/.ollama
-    ports:
-      - "127.0.0.1:11001:11434"
-    mem_limit: 14g
-    oom_score_adj: 1000           # OOM 때 가장 먼저 정리 (메모리를 가장 많이 쓰는 AI 모델이 보통 먼저 죽는다)
     restart: unless-stopped
     logging:
       driver: json-file

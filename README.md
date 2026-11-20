@@ -16,10 +16,10 @@
 ```bash
 cd ~/projects/recycle && ./deploy/deploy.sh   # git pull → 이미지 빌드 → 재시작 → /health 확인
 ```
-- 앱 `127.0.0.1:11010` (nginx → https://recycle.so4.kr), AI(Ollama qwen3.5:9b 멀티모달) `127.0.0.1:11001`, DB 는 서버 MariaDB(`recycle`)
+- 앱 `127.0.0.1:11010` (nginx → https://recycle.so4.kr), 사진 판정은 OpenAI API(`gpt-6-luna`), DB 는 서버 MariaDB(`recycle`)
 - 설정: `deploy/.env` (git 제외, 예시는 `deploy/.env.example`). OpenAI 키·관리자 아이디·보상 배율을 여기서 바꾼다
 - nginx 설정 원본: `deploy/nginx/recycle.so4.kr`
-- 사진·로그·AI 모델: `deploy/runtime/` (git 제외)
+- 사진·로그: `deploy/runtime/` (git 제외)
 - 앱 설치 파일: `deploy/runtime/apk/recycle.apk` → https://recycle.so4.kr/download/recycle.apk
 
 ## 로컬 개발

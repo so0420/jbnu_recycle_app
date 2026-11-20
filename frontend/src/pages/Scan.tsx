@@ -124,7 +124,7 @@ export default function Scan() {
             {res.result.habit_ok === false && res.guide.habit_name && <div className="r small">다음엔 '{res.guide.habit_name}'로 찍어 보세요. 진화 조건이에요</div>}
             {res.reward.dex_new && <div className="r"><Icon name="stamp" size={22} />품목 도감에 새로 기록했어요</div>}
           </div>
-          <p className="tiny muted">판정: {res.result.judged_by === 'system_one' ? '로컬 AI' : res.result.judged_by === 'openai' ? '정밀 AI' : '사용자 선택'} · {(res.result.latency_ms / 1000).toFixed(1)}초</p>
+          <p className="tiny muted">판정: {res.result.judged_by === 'openai' ? 'AI' : '사용자 선택'} · {(res.result.latency_ms / 1000).toFixed(1)}초</p>
         </div>
       )}
       {(res || chosen) && !busy && (

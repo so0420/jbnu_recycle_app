@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 리사이클 서버 켜기 (앱 + AI). 사용: ~/projects/recycle/start.sh
+# 리사이클 서버 켜기. 사용: ~/projects/recycle/start.sh
 set -euo pipefail
 cd "$(dirname "$0")/deploy"
 docker compose up -d          # 꺼져 있던 컨테이너를 다시 켠다 (이미지는 새로 만들지 않음)

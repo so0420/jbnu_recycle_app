@@ -67,19 +67,19 @@ async def scan(request: Request, photo: UploadFile = File(...), user: User = Dep
             res = await classifier.classify(db, b64)
     except TimeoutError:
         res = None
-    if res is None or (res.s1 is None and res.s2 is None):
+    if res is None or res.raw is None:
         await refund_ai(db, user)
         raise HTTPException(409, "AI가 지금 바빠요. 잠시 뒤 다시 찍어 주세요")
-    if res.category is None and not res.candidates:
-        # 2차도 확신이 없으면 사용자가 고르게: 2차가 짐작한 분류를 앞에, 일반쓰레기까지 전부
+    if res.category is None:
+        # AI 가 확신이 없으면 사용자가 고르게: AI 가 짐작한 분류를 앞에, 일반쓰레기까지 전부
         cats = list(data.guides()["categories"])
-        guess = (res.s2 or {}).get("category")
+        guess = res.candidates[0] if res.candidates else None
         res.candidates = ([guess] if guess in cats else []) + [c for c in cats if c != guess]
     ph = await asyncio.to_thread(images.phash, img)
     user = await locks.lock_user(db, user)
     path = await asyncio.to_thread(images.save, img, "scan")
     try:
-        log = ClassifyLog(user_id=user.id, photo_path=path, phash=ph, s1_json=res.s1, s2_json=res.s2,
+        log = ClassifyLog(user_id=user.id, photo_path=path, phash=ph, s2_json=res.raw,
                           category=res.category, item_label=res.item_label, judged_by=res.judged_by,
                           clean=res.clean, habit_ok=res.habit_ok, latency_ms=res.latency_ms)
         db.add(log)

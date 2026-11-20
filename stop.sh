@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 리사이클 서버 끄기 (앱 + AI). 사용: ~/projects/recycle/stop.sh
+# 리사이클 서버 끄기. 사용: ~/projects/recycle/stop.sh
 # 꺼 둔 동안 https://recycle.so4.kr 은 502 가 난다. 서버를 재부팅해도 꺼진 채로 남는다.
 set -euo pipefail
 cd "$(dirname "$0")/deploy"

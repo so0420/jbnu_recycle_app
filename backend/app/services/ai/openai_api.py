@@ -1,4 +1,4 @@
-"""2차 판정: OpenAI. 1차가 애매할 때만 호출하고, 하루 토큰 한도를 넘지 않게 막는다."""
+"""사진 판정: OpenAI. 하루 토큰 한도를 넘지 않게 막는다."""
 import json
 
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -73,7 +73,7 @@ async def ask_json(db: AsyncSession, prompt: str, image_b64: str | None, schema:
             input=[{"role": "user", "content": content}],
             text={"format": {"type": "json_schema", "name": name, "schema": schema, "strict": True}},
         )
-    except Exception as e:  # 네트워크·모델 오류 모두 2차 실패로 처리
+    except Exception as e:  # 네트워크·모델 오류 모두 판정 실패로 처리
         logger.warning(f"OpenAI 호출 실패: {e!r}")
         if "Timeout" in type(e).__name__:
             await _record(ESTIMATE_TOKENS_ON_TIMEOUT)

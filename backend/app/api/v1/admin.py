@@ -31,7 +31,7 @@ async def stats(_: User = Depends(auth.admin_user), db: AsyncSession = Depends(g
     users = (await db.execute(select(func.count()).select_from(User).where(User.deleted_at.is_(None)))).scalar_one()
     usage = await db.get(AiUsage, (today(), "openai"))
     return {"users": users, "scans_7d": total_scans, "judged_by_7d": by,
-            "system_one_ratio": round(by.get("system_one", 0) / total_scans, 3) if total_scans else None,
+            "ai_ratio": round(1 - (by.get("none", 0) + by.get("user", 0)) / total_scans, 3) if total_scans else None,
             "avg_latency_ms": round(lat or 0), "verifications_7d": ver, "fail_codes_7d": fails,
             "openai_tokens_today": usage.tokens if usage else 0,
             "openai_daily_limit": settings.OPENAI_DAILY_TOKEN_LIMIT}
