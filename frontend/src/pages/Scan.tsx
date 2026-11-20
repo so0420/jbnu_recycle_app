@@ -11,7 +11,7 @@ import type { Guide } from '../lib/types';
 
 interface ScanRes {
   log_id: number;
-  result: { category: string | null; clean: boolean | null; habit_ok: boolean | null; judged_by: string; confidence: number; latency_ms: number };
+  result: { category: string | null; name: string | null; clean: boolean | null; habit_ok: boolean | null; judged_by: string; confidence: number; latency_ms: number };
   guide: Guide | null;
   candidates: Guide[];
   reward: {
@@ -25,14 +25,14 @@ interface ScanRes {
 
 const TYPE_ICON: Record<string, string> = { plastic: 'mat_plastic', paper: 'mat_paper', metal: 'mat_metal', glass: 'mat_glass', vinyl: 'mat_vinyl', volt: 'mat_volt', fabric: 'mat_fabric' };
 
-export function GuideCard({ g }: { g: Guide }) {
+export function GuideCard({ g, name }: { g: Guide; name?: string | null }) {
   return (
     <div className="card pop">
       <div className="result-head">
         {g.recyclable ? <Icon name={TYPE_ICON[g.type] ?? 'bag'} size={64} /> : <Icon name="bag" size={64} />}
         <div className="col" style={{ gap: 2 }}>
           <span className={`chip ${g.recyclable ? g.type : 'none'}`}>{g.recyclable ? `${TYPE_NAMES[g.type]} · ${g.category_name}` : '재활용 안 돼요'}</span>
-          <h2>{g.item?.name ?? g.category_name}</h2>
+          <h2>{g.item?.name ?? name ?? g.category_name}</h2>
         </div>
       </div>
       {g.item ? <p className="method">{g.item.method}</p> : <p className="method">{g.category_name}(으)로 배출해요</p>}
@@ -96,6 +96,7 @@ export default function Scan() {
       {res && !g && (
         <div className="card">
           <h3>무엇인지 잘 모르겠어요</h3>
+          {res.result.name && <p className="small">AI 짐작: {res.result.name}</p>}
           {res.candidates.length > 0 ? (
             <>
               <p className="small muted">아래에서 골라 주시면 버리는 법을 알려 드릴게요.</p>
@@ -110,7 +111,7 @@ export default function Scan() {
           )}
         </div>
       )}
-      {g && <GuideCard g={g} />}
+      {g && <GuideCard g={g} name={res?.result.name} />}
       {res?.guide && (
         <div className="card">
           <h3>보상</h3>

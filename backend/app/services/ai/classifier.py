@@ -21,6 +21,7 @@ class ClassifyResult:
     judged_by: str                      # openai | none
     confidence: float
     candidates: list[str] = field(default_factory=list)
+    name: str | None = None             # AI 가 본 물건 이름 (한국어, 등록된 품목이 아니어도)
     raw: dict | None = None             # OpenAI 답 그대로 (None 이면 판정하지 못함)
     latency_ms: int = 0
 
@@ -39,8 +40,9 @@ def _classify_prompt() -> tuple[str, dict]:
     cats, items, habits = g["categories"], g["items"], g["habits"]
     schema = {
         "type": "object", "additionalProperties": False,
-        "required": ["category", "item_label", "is_dirty", "good_habit", "confidence"],
+        "required": ["name", "category", "item_label", "is_dirty", "good_habit", "confidence"],
         "properties": {
+            "name": {"type": "string"},
             "category": {"type": "string", "enum": list(cats)},
             "item_label": {"type": "string", "enum": [it["label"] for it in items] + ["unknown"]},
             "is_dirty": {"type": "boolean"},
@@ -55,6 +57,7 @@ def _classify_prompt() -> tuple[str, dict]:
     prompt = "\n".join([
         STATE_ITEM,
         "Classify the main item in the photo for Korean recycling rules.",
+        'name: what the main item is, as a short Korean noun phrase (e.g. "검은 우산", "무선 마우스", "생수병").',
         "Categories: " + "; ".join(f"{k} = {v['en']}" for k, v in cats.items()) + ".",
         "Items (label (category)): " + ", ".join(f"{it['label']} ({it['category']})" for it in items) + ".",
         "item_label must belong to the chosen category; use unknown if none fits.",
@@ -79,6 +82,8 @@ async def classify(db: AsyncSession, image_b64: str) -> ClassifyResult:
         cats = data.guides()["categories"]
         guess = ans.get("category")
         res.confidence = float(ans.get("confidence", 0) or 0)
+        if isinstance(ans.get("name"), str) and ans["name"].strip():
+            res.name = ans["name"].strip()[:40]
         if guess in cats:
             res.candidates = [guess]
         if guess in cats and res.confidence >= MIN_CONFIDENCE:
