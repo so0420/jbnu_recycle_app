@@ -17,12 +17,18 @@ interface Overview {
   unit: string; name: string; sido: string; mode: string;
   mine: { cleanliness: number; stage: Stage; rank: number | null; verifs: number; hit_today: number };
   confirmed: boolean; attack_tickets: number; cap: number; daily_per_target: number;
+  cleanse: { amount: number; mods: string[]; can: boolean };
   total: number; targets: Target[]; thrower: Monster | null;
 }
 interface AttackRes {
   target: ThrowTarget & { unit: string; sido: string; rank_before: number | null };
   from: { unit: string; name: string }; damage: number; planned: number; mods: string[]; attack_tickets: number;
 }
+interface CleanseRes {
+  target: ThrowTarget & { unit: string; sido: string }; amount: number; planned: number; mods: string[]; attack_tickets: number;
+}
+/** 공격·정화 결과를 연출과 결과 카드에 쓰는 한 형태로 */
+interface Outcome { mode: 'attack' | 'cleanse'; target: ThrowTarget; delta: number; planned: number; mods: string[]; tickets: number }
 interface Ev { type: string; amount: number; nickname: string | null; at: string; dir?: 'in' | 'out'; other?: string }
 
 const MODE_TEXT: Record<string, string> = { sigungu: '전국 시·군·구', zone: '전주 권역', dong: '행정동' };
@@ -30,6 +36,7 @@ const MOD_TEXT: Record<string, { label: string; cls: string; desc: string }> = {
   underdog: { label: '역전 ×1.2', cls: 'ok', desc: '우리보다 순위가 높은 지역이라 피해가 커요' },
   fatigue: { label: '많이 맞음 ×0.5', cls: 'common', desc: '오늘 이미 많이 공격받은 지역이라 피해가 줄어요' },
   crisis: { label: '위기 보호 ×0.5', cls: 'bad', desc: '청결도가 위기인 지역이라 피해가 줄어요' },
+  crisis_boost: { label: '위기 회복 ×1.5', cls: 'ok', desc: '청결도가 위기라서 더 크게 회복했어요' },
 };
 
 function day(at: string) {
@@ -43,7 +50,7 @@ export default function Regions() {
   const [feed, setFeed] = useState<Ev[]>([]);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
-  const [hit, setHit] = useState<AttackRes | null>(null);
+  const [hit, setHit] = useState<Outcome | null>(null);
   const [hitDone, setHitDone] = useState(false);
 
   const load = async () => {
@@ -62,7 +69,23 @@ export default function Regions() {
     try {
       const r = await send<AttackRes>('/attack', 'POST', { target: t.unit });
       setHitDone(false);
-      setHit(r);
+      setHit({ mode: 'attack', target: r.target, delta: r.damage, planned: r.planned, mods: r.mods, tickets: r.attack_tickets });
+      window.scrollTo({ top: 0 });
+      void refresh();
+    } catch (e) {
+      toast(errMsg(e), 'err');
+      void load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cleanse() {
+    setBusy(true);
+    try {
+      const r = await send<CleanseRes>('/attack/cleanse', 'POST');
+      setHitDone(false);
+      setHit({ mode: 'cleanse', target: r.target, delta: r.amount, planned: r.planned, mods: r.mods, tickets: r.attack_tickets });
       window.scrollTo({ top: 0 });
       void refresh();
     } catch (e) {
@@ -84,22 +107,23 @@ export default function Regions() {
   if (!ov) return <div className="splash">불러오는 중…</div>;
 
   if (hit) {
+    const heal = hit.mode === 'cleanse';
     return (
       <>
-        <PageHead title={`${hit.target.name} 공격!`} back={false} />
-        <TrashThrow thrower={ov.thrower} fromName={ov.name} target={hit.target} damage={hit.damage} onDone={() => setHitDone(true)} />
+        <PageHead title={heal ? `${hit.target.name} 정화!` : `${hit.target.name} 공격!`} back={false} />
+        <TrashThrow mode={hit.mode} thrower={ov.thrower} fromName={ov.name} target={hit.target} damage={hit.delta} onDone={() => setHitDone(true)} />
         {hitDone && (
           <div className="card pop">
-            <h2>{hit.target.name}에 쓰레기를 던졌어요!</h2>
+            <h2>{heal ? '우리 동네를 깨끗하게 정화했어요!' : `${hit.target.name}에 쓰레기를 던졌어요!`}</h2>
             <p>청결도 <b className="num">{Math.round(hit.target.before)} → {Math.round(hit.target.after)}</b>
-              {' '}<span className="chip bad">−{hit.damage}</span> · {hit.target.stage.name}</p>
+              {' '}<span className={`chip ${heal ? 'ok' : 'bad'}`}>{heal ? '+' : '−'}{hit.delta}</span> · {hit.target.stage.name}</p>
             {hit.mods.length > 0 && (
               <div className="col" style={{ gap: 4 }}>
                 {hit.mods.map((m) => <span key={m} className="small muted">· {MOD_TEXT[m]?.desc ?? m}</span>)}
               </div>
             )}
-            {hit.damage < hit.planned && <p className="small muted">청결도는 최저치 아래로 내려가지 않아요.</p>}
-            <p className="small muted">남은 공격권 {hit.attack_tickets}장. 상대 지역도 분리배출로 청결도를 되찾을 수 있어요.</p>
+            {hit.delta < hit.planned && <p className="small muted">{heal ? '청결도는 1000을 넘지 않아요.' : '청결도는 최저치 아래로 내려가지 않아요.'}</p>}
+            <p className="small muted">남은 공격권 {hit.tickets}장.{heal ? '' : ' 상대 지역도 분리배출이나 정화로 청결도를 되찾을 수 있어요.'}</p>
             <button className="btn block" onClick={() => { setHit(null); void load(); }}>확인</button>
           </div>
         )}
@@ -136,7 +160,12 @@ export default function Regions() {
           </div>
           <b className="num">공격권 {tickets}/{ov.cap}</b>
         </div>
-        <p className="tiny muted">공격권은 <b>배출 시간</b>에 <b>우리 동네 수거장</b>에서 배출 인증하면 1장씩 받아요 (하루 보상 3번 안에서). 레이드 도전권과는 따로예요.</p>
+        <button className="btn block" disabled={busy || !ov.confirmed || tickets < 1 || !ov.cleanse.can} onClick={cleanse}>
+          <Icon name="clean_spark" size={24} />
+          {ov.cleanse.can ? `공격권으로 우리 동네 정화 +${ov.cleanse.amount}` : '우리 동네는 이미 가장 깨끗해요'}
+          {ov.cleanse.mods.includes('crisis_boost') ? ' (위기 ×1.5)' : ''}
+        </button>
+        <p className="tiny muted">공격권은 <b>배출 시간</b>에 <b>우리 동네 수거장</b>에서 배출 인증하면 1장씩 받아요 (하루 보상 3번 안에서). 다른 지역 공격이나 우리 동네 정화에 써요. 레이드 도전권과는 따로예요.</p>
         {!ov.confirmed && <p className="caution">첫 배출 인증으로 내 동네가 확정되면 공격할 수 있어요.</p>}
       </div>
 
@@ -184,6 +213,7 @@ export default function Regions() {
           <p key={i} className="small">
             {e.type === 'restore' && `${e.nickname ?? '누군가'}님이 분리배출했어요 (+${e.amount})`}
             {e.type === 'raid_kill' && `레이드 보스를 쓰러뜨렸어요! (+${e.amount})`}
+            {e.type === 'cleanse' && <span style={{ color: '#2e9a5a' }}>{e.nickname ?? '누군가'}님이 공격권으로 정화했어요 (+{e.amount})</span>}
             {e.type === 'attack' && e.dir === 'in' && <span style={{ color: 'var(--bad)' }}>{e.other}에서 쓰레기가 날아왔어요 ({e.amount})</span>}
             {e.type === 'attack' && e.dir === 'out' && `${e.nickname ?? '우리 주민'}님이 ${e.other}에 쓰레기를 던졌어요 (${e.amount})`}
             <span className="tiny muted"> · {day(e.at)}</span>
@@ -199,6 +229,7 @@ export default function Regions() {
           <li>우리보다 순위가 높은 지역을 공격하면 피해 ×1.2. 오늘 이미 많이 맞은 지역과 위기 지역(청결도 200 미만)은 피해가 절반이에요.</li>
           <li>같은 지역은 하루 {ov.daily_per_target}번까지 공격할 수 있고, 공격권은 {ov.cap}장까지 모을 수 있어요.</li>
           <li>방어는 분리배출이에요. 우리 동네 수거장에서 인증하면 청결도가 회복되고, 레이드 보스를 쓰러뜨리면 크게 회복해요.</li>
+          <li>공격권 1장으로 우리 동네를 정화할 수도 있어요. 회복량은 공격 1회와 같고, 위기 지역(청결도 200 미만)이면 1.5배예요.</li>
           <li>매일 자정 생활 쓰레기만큼 청결도가 내려가고, 순위는 매주 월요일에 새로 시작해요.</li>
         </ul>
       </details>

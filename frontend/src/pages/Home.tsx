@@ -39,7 +39,7 @@ export default function Home() {
     me.bag.count > 0 && `가방에 ${me.bag.count}개 모였어. 수거장에서 정산하자!`,
     dim && '동네가 더러워졌어… 같이 치우자!',
     (reg?.attacked_today.count ?? 0) > 0 && '다른 지역에서 쓰레기가 날아왔어! 분리배출로 되갚아 주자',
-    me.attack_tickets > 0 && `공격권이 ${me.attack_tickets}장 있어! 다른 지역에 쓰레기를 던져 볼래?`,
+    me.attack_tickets > 0 && `공격권이 ${me.attack_tickets}장 있어! 다른 지역을 공격하거나 우리 동네를 정화하자`,
   ].filter(Boolean) as string[];
   const petLines = todo.length ? todo : [
     '반가워!', '오늘도 분리배출 화이팅!', '페트병은 라벨 떼고 찌그러뜨려 줘!', '깨끗이 헹궈서 버리면 캡슐이 더 좋아져!',

@@ -4,6 +4,7 @@ import { STAGE_COLORS } from '../lib/labels';
 import type { Monster } from '../lib/types';
 
 const TRASH = ['trash_bottle', 'trash_can', 'trash_box', 'trash_bag', 'trash_peel'];
+const SPARK = ['clean_spark'];
 const WINDUP = 450;      // 던지기 전 준비 동작
 const GAP = 140;         // 쓰레기 사이 간격
 const FLIGHT = 760;      // 한 개가 날아가는 시간
@@ -17,19 +18,22 @@ function stageKeyOf(c: number): string {
 interface Shot { id: number; icon: string; dx: number; rot: number; delay: number; hitX: number }
 interface Splat { id: number; x: number; amount: number }
 
-/** 우리 리몬이 상대 지역에 쓰레기를 던지는 연출. 화면을 누르면 건너뛴다. */
-export default function TrashThrow({ thrower, fromName, target, damage, onDone }: {
+/** 우리 리몬이 상대 지역에 쓰레기를 던지는 연출 (attack), 또는 우리 지역에 반짝이를 날려 얼룩을 닦는 연출 (cleanse).
+ *  damage 는 청결도 변화량의 크기. 화면을 누르면 건너뛴다. */
+export default function TrashThrow({ thrower, fromName, target, damage, onDone, mode = 'attack' }: {
   thrower: Monster | null; fromName: string; target: ThrowTarget; damage: number; onDone: () => void;
+  mode?: 'attack' | 'cleanse';
 }) {
+  const heal = mode === 'cleanse';
   const shots = useMemo<Shot[]>(() => {
     const count = Math.max(4, Math.min(9, Math.round(damage / 18)));
     return Array.from({ length: count }, (_, i) => {
       const dx = Math.round((Math.random() * 2 - 1) * 70);
-      return { id: i, icon: TRASH[(i + Math.floor(Math.random() * TRASH.length)) % TRASH.length], dx,
+      return { id: i, icon: heal ? SPARK[i % SPARK.length] : TRASH[(i + Math.floor(Math.random() * TRASH.length)) % TRASH.length], dx,
                rot: (Math.random() < 0.5 ? -1 : 1) * (360 + Math.round(Math.random() * 360)),
                delay: WINDUP + i * GAP, hitX: dx };
     });
-  }, [damage]);
+  }, [damage, heal]);
   const reduced = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, []);
   const [hits, setHits] = useState(0);
   const [splats, setSplats] = useState<Splat[]>([]);
@@ -39,7 +43,9 @@ export default function TrashThrow({ thrower, fromName, target, damage, onDone }
   const finished = useRef(false);
 
   const per = shots.length ? damage / shots.length : 0;
-  const shown = done ? target.after : target.before - per * hits;
+  const sign = heal ? 1 : -1;
+  const shown = done ? target.after : target.before + sign * per * hits;
+  const stainCount = heal ? Math.max(0, Math.min(shots.length, 9) - hits) : Math.min(hits, 9);
 
   function finish() {
     if (finished.current) return;
@@ -67,17 +73,18 @@ export default function TrashThrow({ thrower, fromName, target, damage, onDone }
 
   const stageKey = done ? target.stage.key : stageKeyOf(shown);
   return (
-    <div className="throw-stage" onClick={finish} role="button" aria-label="쓰레기 던지기 연출 (누르면 건너뛰기)">
-      <div className={`throw-target ${shake % 2 ? 'shake-a' : shake ? 'shake-b' : ''}`}>
+    <div className={`throw-stage ${heal ? 'heal' : ''}`} onClick={finish} role="button"
+         aria-label={`${heal ? '정화' : '쓰레기 던지기'} 연출 (누르면 건너뛰기)`}>
+      <div className={`throw-target ${heal ? (shake ? `glow-${shake % 2 ? 'a' : 'b'}` : '') : shake % 2 ? 'shake-a' : shake ? 'shake-b' : ''}`}>
         <div className="row between">
           <b>{target.name}</b>
           <span className="num small" style={{ color: STAGE_COLORS[stageKey] }}>청결도 {Math.round(shown)}</span>
         </div>
         <div className="bar"><span style={{ width: `${Math.max(0, shown) / 10}%`, background: STAGE_COLORS[stageKey] }} /></div>
-        {Array.from({ length: Math.min(hits, 9) }, (_, i) => <span key={i} className={`stain s${i}`} />)}
+        {Array.from({ length: stainCount }, (_, i) => <span key={i} className={`stain s${i}`} />)}
         {splats.map((s) => (
-          <span key={s.id} className="splat" style={{ left: `calc(50% + ${s.x}px)` }}>
-            <span className="puff" /><span className="hit-num">−{s.amount}</span>
+          <span key={s.id} className={`splat ${heal ? 'heal' : ''}`} style={{ left: `calc(50% + ${s.x}px)` }}>
+            <span className="puff" /><span className="hit-num">{heal ? '+' : '−'}{s.amount}</span>
           </span>
         ))}
       </div>

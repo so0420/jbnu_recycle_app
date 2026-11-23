@@ -24,6 +24,16 @@ class AttackIn(BaseModel):
     target: str = Field(min_length=1, max_length=12)
 
 
+@router.post("/attack/cleanse")
+@limiter.limit("20/minute")
+async def cleanse(request: Request, user: User = Depends(auth.current_user), db: AsyncSession = Depends(get_db)):
+    """정화: 공격권 1장으로 우리 지역 청결도 회복."""
+    user = await locks.lock_user(db, user)
+    out = await attack_svc.cleanse(db, user)
+    await db.commit()
+    return out
+
+
 @router.post("/attack")
 @limiter.limit("20/minute")
 async def attack(request: Request, body: AttackIn, user: User = Depends(auth.current_user),

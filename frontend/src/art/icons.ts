@@ -104,6 +104,9 @@ const ICONS: Record<string, () => string> = {
     `<path d="M5 28 L15 28 M3 37 L14 37 M7 46 L16 46" ${s('line', 3.4)}/>` +
     rot(-18, 38, 36, trashBag(38, 38, 0.9, '#5E6E64')) + star(s, 54, 12, 5),
   trash_bag: () => trashBag(32, 34, 1, '#4E5F55'),
+  clean_spark: () =>
+    `<path d="${spiky(30, 34, 22, 8, 4, -Math.PI / 2)}" ${s('#BFF0D4')}/>` +
+    `<path d="${spiky(30, 34, 11, 4, 4, -Math.PI / 4)}" fill="#FFFFFF"/>` + star(s, 50, 14, 6) + star(s, 52, 46, 4),
   trash_bottle: () =>
     rot(-24, 32, 32, bottle(32, 34, 1.3, '#CFE8F4', '#2C6BCB') + `<rect x="22" y="32" width="20" height="9" ${s('#E5553C', 2.6)}/>` +
       `<path d="M24 46 L30 50 M36 22 L40 26" ${s('line', 2)}/>` + `<path d="M26 24 L26 30" ${s('lightline', 3)}/>`),

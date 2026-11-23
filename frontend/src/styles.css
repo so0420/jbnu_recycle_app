@@ -293,6 +293,12 @@ button { font: inherit; color: inherit; }
 .splat .hit-num { position: absolute; left: 0; top: -30px; transform: translateX(-50%); font-family: var(--display); font-size: 20px; color: var(--bad);
   -webkit-text-stroke: 1px #fff; white-space: nowrap; animation: float-up 0.7s ease-out forwards; }
 @keyframes puff { from { transform: scale(0.3); opacity: 1; } 60% { opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+.throw-stage.heal { background: linear-gradient(#d9f0e3 0 58%, #cfe7c4 58% 100%); }
+.throw-target.glow-a, .throw-target.glow-b { box-shadow: 0 3px 0 var(--line), 0 0 0 6px #bff0d4; transition: box-shadow 0.1s; }
+.throw-target.glow-b { box-shadow: 0 3px 0 var(--line), 0 0 0 9px #d8f7e5; }
+.splat.heal .puff { background: radial-gradient(circle, #ffffff 0 22%, #bff0d4 23% 42%, transparent 43%), radial-gradient(circle at 18% 28%, #ffd447 0 8%, transparent 9%),
+  radial-gradient(circle at 82% 22%, #ffffff 0 9%, transparent 10%), radial-gradient(circle at 72% 82%, #ffd447 0 8%, transparent 9%); }
+.splat.heal .hit-num { color: #2e9a5a; }
 .proj { position: absolute; left: 50%; bottom: 118px; width: 42px; height: 42px; margin-left: -21px; opacity: 0; pointer-events: none;
   animation: proj-x 760ms linear forwards; }
 .proj-y, .proj-spin { display: block; width: 42px; height: 42px; }

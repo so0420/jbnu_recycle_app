@@ -3,6 +3,7 @@
 - 공격권: 배출 시간에 우리 동네 수거장에서 인증하면 1장 (actions.settle). 레이드용 도전권과 따로 센다.
 - 공격: 공격권 1장으로 이번 주에 참여한 다른 지역에 쓰레기를 던져 청결도를 깎는다.
 - 방어: 그 지역 주민이 분리배출(인증)을 하면 청결도가 회복된다 (region.on_verification).
+- 정화: 공격권 1장을 우리 지역에 써서 청결도를 회복한다 (공격 1회와 같은 크기, 위기 지역이면 더 크게).
 
 피해 = 기준 회복량(r_base) × mult × 공격한 사람 지역의 인구 보정
        × 역전 보너스(우리보다 순위가 높은 지역) × 피로(오늘 많이 맞은 지역) × 위기 보호(위기 지역)
@@ -62,6 +63,17 @@ def modifiers(base: float, my_rank: int | None, target_rank: int | None, hit_tod
     return round(dmg, 1), mods
 
 
+async def cleanse_amount(db: AsyncSession, my_unit: str, cleanliness: float) -> tuple[float, list[str]]:
+    """정화 1회 회복량. (회복량, 적용된 보정 목록)"""
+    rc = region.cfg()
+    amount = cfg()["cleanse_mult"] * await region.r_base(db) * await attack_weight(db, my_unit)
+    mods = []
+    if cleanliness < rc["crisis_below"]:
+        amount *= rc["crisis_restore"]
+        mods.append("crisis_boost")
+    return round(amount, 1), mods
+
+
 async def _hits_today(db: AsyncSession, unit: str | None = None) -> dict[str, float]:
     """지역별 오늘 받은 공격 피해 합."""
     q = (select(RegionEvent.unit, func.coalesce(func.sum(-RegionEvent.amount), 0))
@@ -110,14 +122,39 @@ async def overview(db: AsyncSession, user: User) -> dict:
         used = my_today.get(r["unit"], 0)
         targets.append({**r, "damage": dmg, "mods": mods, "hit_today": round(hits.get(r["unit"], 0.0)),
                         "my_today": used, "can": used < c["daily_per_target"]})
+    heal, heal_mods = await cleanse_amount(db, mine, clean)
     return {
         "unit": mine, "name": us.get(mine, {}).get("name"), "sido": us.get(mine, {}).get("sido"),
+        "cleanse": {"amount": heal, "mods": heal_mods, "can": clean < region.cfg()["max"]},
         "mode": settings.REGION_MODE,
         "mine": {"cleanliness": round(clean), "stage": region.stage_of(clean), "rank": ranks.get(mine),
                  "verifs": st.verifs if st else 0, "hit_today": round(hits.get(mine, 0.0))},
         "confirmed": user.region_confirmed_at is not None,
         "attack_tickets": user.attack_tickets or 0, "cap": c["cap"], "daily_per_target": c["daily_per_target"],
         "total": len(rows), "targets": targets, "thrower": await thrower(db, user),
+    }
+
+
+async def cleanse(db: AsyncSession, user: User) -> dict:
+    """정화 1회: 공격권 1장으로 우리 지역 청결도를 회복한다. 호출 전에 사용자 행을 잠가야 한다."""
+    if user.region_confirmed_at is None:
+        raise HTTPException(400, "첫 배출 인증으로 내 동네가 확정되면 정화할 수 있어요")
+    mine = await home_unit(db, user)
+    if (user.attack_tickets or 0) < 1:
+        raise HTTPException(400, "공격권이 없어요. 배출 시간에 우리 동네 수거장에서 인증하면 받을 수 있어요")
+    st = await region.state(db, mine)
+    before = st.cleanliness
+    if before >= region.cfg()["max"]:
+        raise HTTPException(400, "우리 동네는 이미 가장 깨끗해요")
+    amount, mods = await cleanse_amount(db, mine, before)
+    await economy.add_resource(db, user, "attack_tickets", -1, "cleanse", mine)
+    after = (await region.change(db, mine, amount, "cleanse", user)).cleanliness
+    us = await region.units(db)
+    return {
+        "target": {"unit": mine, "name": us.get(mine, {}).get("name"), "sido": us.get(mine, {}).get("sido"),
+                   "before": round(before, 1), "after": round(after, 1), "stage": region.stage_of(after)},
+        "amount": round(after - before, 1), "planned": amount, "mods": mods,
+        "attack_tickets": user.attack_tickets,
     }
 
 

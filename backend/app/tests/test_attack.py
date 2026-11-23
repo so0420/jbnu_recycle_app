@@ -115,6 +115,47 @@ async def test_overview_and_feed(db_session):
     assert outgoing[0]["dir"] == "out" and outgoing[0]["other"] == "나시" and outgoing[0]["nickname"] == "공격자"
 
 
+async def test_cleanse(db_session):
+    db = db_session
+    me = await _world(db, clean=(500, 700, 300), tickets=3)
+    # 기준 120 (공격과 같은 크기) → 500 + 120
+    r = await attack_svc.cleanse(db, me)
+    assert r["amount"] == pytest.approx(120) and r["mods"] == []
+    assert await _clean(db, "ST0001") == pytest.approx(620)
+    assert me.attack_tickets == 2
+    await db.flush()
+    ev = (await db.execute(select(RegionEvent).where(RegionEvent.type == "cleanse"))).scalars().one()
+    assert ev.unit == "ST0001" and ev.user_id == me.id
+    assert (await region.feed(db, "ST0001"))[0]["type"] == "cleanse"
+
+    # 위기 지역이면 ×1.5
+    st = await db.get(RegionState, (week_start(), "ST0001"))
+    st.cleanliness = 150.0
+    await db.flush()
+    r = await attack_svc.cleanse(db, me)
+    assert r["amount"] == pytest.approx(180) and r["mods"] == ["crisis_boost"]
+
+    # 최대 1000 위로는 올라가지 않고, 이미 1000이면 공격권을 쓰지 않는다
+    st.cleanliness = 950.0
+    await db.flush()
+    r = await attack_svc.cleanse(db, me)
+    assert r["amount"] == pytest.approx(50) and me.attack_tickets == 0
+    me.attack_tickets = 1
+    with pytest.raises(HTTPException) as e:
+        await attack_svc.cleanse(db, me)
+    assert "이미 가장 깨끗" in e.value.detail
+    assert me.attack_tickets == 1
+
+    me.attack_tickets = 0
+    st.cleanliness = 500.0
+    with pytest.raises(HTTPException) as e:
+        await attack_svc.cleanse(db, me)
+    assert "공격권이 없어요" in e.value.detail
+
+    ov = await attack_svc.overview(db, me)
+    assert ov["cleanse"] == {"amount": pytest.approx(120), "mods": [], "can": True}
+
+
 async def test_verification_grants_attack_ticket(db_session):
     db = db_session
     me = await _world(db, tickets=0)

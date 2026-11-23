@@ -37,6 +37,7 @@ attack:                          # 공격권: 다른 지역을 공격(지역 공
   fatigue_mult: 0.5             # 그다음 피해는 절반
   crisis_damage: 0.5            # 위기 지역(청결도 crisis_below 미만)이 받는 피해
   daily_per_target: 2           # 한 사람이 같은 지역을 하루에 공격할 수 있는 횟수
+  cleanse_mult: 1.5             # 정화(공격권으로 우리 지역 회복) 1회 = 기준 회복량 × 1.5 × 인구 보정 (위기 지역은 region.crisis_restore 배)
 
 capsule:
   rare_rate: 0.25
