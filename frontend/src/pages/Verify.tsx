@@ -20,6 +20,8 @@ interface Reward {
   coins?: number;
   capsule?: { id: number; type: string };
   tickets?: number;
+  attack_tickets?: number;
+  attack_tickets_full?: boolean;
   region_restore?: number;
   region_cleanliness?: number;
   weekly?: { count: number; goal: number; completed_now?: boolean };
@@ -178,6 +180,8 @@ export default function Verify() {
             )}
             {rw.coins ? <div className="r"><Icon name="coin" size={22} />에코 코인 +{rw.coins}</div> : null}
             {rw.tickets ? <div className="r"><Icon name="ticket" size={22} />도전권 +{rw.tickets}{rw.dumpday_bonus ? ' (배출일 보너스 포함)' : ''}</div> : null}
+            {rw.attack_tickets ? <div className="r"><Icon name="attack" size={22} />공격권 +{rw.attack_tickets} · <Link to="/regions">다른 지역 공격하러 가기</Link></div> : null}
+            {rw.attack_tickets_full && <div className="r small"><Icon name="attack" size={22} />공격권이 가득 찼어요. 지역 공방전에서 써 주세요</div>}
             {rw.region_restore ? <div className="r"><Icon name="type_paper" size={22} />우리 동네 청결도 +{rw.region_restore} → {rw.region_cleanliness}</div> : null}
             {rw.stamp_new && <div className="r"><Icon name="stamp" size={22} />새 수거장 스탬프!</div>}
             {rw.weekly && <div className="r">주간 목표 {rw.weekly.count}/{rw.weekly.goal}{rw.weekly.completed_now ? ' 달성!' : ''}</div>}

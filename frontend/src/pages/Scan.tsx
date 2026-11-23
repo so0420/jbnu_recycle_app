@@ -5,7 +5,7 @@ import PhotoPicker from '../components/PhotoPicker';
 import { PageHead } from '../components/common';
 import { send, upload } from '../lib/api';
 import { shrinkPhoto } from '../lib/device';
-import { TYPE_NAMES } from '../lib/labels';
+import { dumpWindowText, TYPE_NAMES, WEEKDAYS } from '../lib/labels';
 import { errMsg, useStore } from '../lib/store';
 import type { Guide } from '../lib/types';
 
@@ -14,6 +14,7 @@ interface ScanRes {
   result: { category: string | null; name: string | null; clean: boolean | null; habit_ok: boolean | null; judged_by: string; confidence: number; latency_ms: number };
   guide: Guide | null;
   candidates: Guide[];
+  dump_when: number[] | null;
   reward: {
     xp: number;
     bag: null | { added: boolean; count: number; capacity: number };
@@ -25,7 +26,7 @@ interface ScanRes {
 
 const TYPE_ICON: Record<string, string> = { plastic: 'mat_plastic', paper: 'mat_paper', metal: 'mat_metal', glass: 'mat_glass', vinyl: 'mat_vinyl', volt: 'mat_volt', fabric: 'mat_fabric' };
 
-export function GuideCard({ g, name }: { g: Guide; name?: string | null }) {
+export function GuideCard({ g, name, when }: { g: Guide; name?: string | null; when?: number[] | null }) {
   return (
     <div className="card pop">
       <div className="result-head">
@@ -36,6 +37,11 @@ export function GuideCard({ g, name }: { g: Guide; name?: string | null }) {
         </div>
       </div>
       {g.item ? <p className="method">{g.item.method}</p> : <p className="method">{g.category_name}(으)로 배출해요</p>}
+      {when && when.length > 0 && (
+        <p className="dump-when">
+          우리 동네는 <b>{when.map((d) => WEEKDAYS[d]).join('·')}요일</b> 수거예요 ({when.map(dumpWindowText).join(' 또는 ')}에 내놓기)
+        </p>
+      )}
       {g.item?.caution && <p className="caution">⚠ {g.item.caution}</p>}
     </div>
   );
@@ -47,12 +53,14 @@ export default function Scan() {
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<ScanRes | null>(null);
   const [chosen, setChosen] = useState<Guide | null>(null);
+  const [chosenWhen, setChosenWhen] = useState<number[] | null>(null);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   async function onPick(file: File) {
     setRes(null);
     setChosen(null);
+    setChosenWhen(null);
     setBusy(true);
     try {
       const blob = await shrinkPhoto(file);
@@ -72,8 +80,9 @@ export default function Scan() {
   async function choose(c: Guide) {
     if (!res) return;
     try {
-      const r = await send<{ guide: Guide }>(`/scan/${res.log_id}/choose`, 'POST', { category: c.category });
+      const r = await send<{ guide: Guide; dump_when: number[] | null }>(`/scan/${res.log_id}/choose`, 'POST', { category: c.category });
       setChosen(r.guide);
+      setChosenWhen(r.dump_when);
     } catch (e) {
       toast(errMsg(e), 'err');
     }
@@ -111,7 +120,7 @@ export default function Scan() {
           )}
         </div>
       )}
-      {g && <GuideCard g={g} name={res?.result.name} />}
+      {g && <GuideCard g={g} name={res?.result.name} when={res?.guide ? res.dump_when : chosenWhen} />}
       {res?.guide && (
         <div className="card">
           <h3>보상</h3>

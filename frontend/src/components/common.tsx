@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Art';
-import { MAT_NAMES } from '../lib/labels';
+import { dumpWindowText, MAT_NAMES, WEEKDAYS } from '../lib/labels';
 
 export function PageHead({ title, back = true, right }: { title: string; back?: boolean; right?: ReactNode }) {
   const nav = useNavigate();
@@ -52,6 +52,24 @@ export function Modal({ children, onClose }: { children: ReactNode; onClose?: ()
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
+    </div>
+  );
+}
+
+/** 우리 동네 요일별 배출 품목 표 */
+export function DumpSchedule({ s }: { s: { days: { weekday: number; items: string[] }[]; note: string | null } }) {
+  return (
+    <div className="dump-sched">
+      {s.days.map((d) => (
+        <div key={d.weekday} className="dump-day">
+          <div className="col" style={{ gap: 0 }}>
+            <b>{WEEKDAYS[d.weekday]}요일 수거</b>
+            <span className="tiny muted">{dumpWindowText(d.weekday)}에 내놓기</span>
+          </div>
+          <span className="small">{d.items.join(' · ')}</span>
+        </div>
+      ))}
+      {s.note && <p className="tiny muted">{s.note}</p>}
     </div>
   );
 }

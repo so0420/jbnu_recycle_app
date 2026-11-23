@@ -86,8 +86,8 @@ async def add_xp(db: AsyncSession, user: User, amount: int, reason: str, ref: st
 # ───────── 재화 ─────────
 async def add_resource(db: AsyncSession, user: User, resource: str, delta: int, reason: str,
                        ref: str | None = None, scale: bool = True) -> int:
-    """resource: coins | tickets | crystals | mat:<type>. 반환: 실제 변경량"""
-    if scale and delta > 0 and resource != "tickets" and resource != "crystals":
+    """resource: coins | tickets | attack_tickets | crystals | mat:<type>. 반환: 실제 변경량"""
+    if scale and delta > 0 and resource not in ("tickets", "attack_tickets", "crystals"):
         delta = mult(delta)
     if delta == 0:
         return 0
@@ -104,6 +104,16 @@ async def add_resource(db: AsyncSession, user: User, resource: str, delta: int, 
         elif user.tickets + delta < 0:
             raise HTTPException(400, "도전권이 부족합니다")
         user.tickets += delta
+    elif resource == "attack_tickets":
+        cap = eco()["attack"]["cap"]
+        have = user.attack_tickets or 0
+        if delta > 0:
+            delta = max(0, min(delta, cap - have))
+            if delta == 0:
+                return 0
+        elif have + delta < 0:
+            raise HTTPException(400, "공격권이 부족합니다")
+        user.attack_tickets = have + delta
     elif resource == "crystals":
         if user.crystals + delta < 0:
             raise HTTPException(400, "정화의 결정이 부족합니다")

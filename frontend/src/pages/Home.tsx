@@ -38,6 +38,8 @@ export default function Home() {
     claimable > 0 && `받을 미션 보상이 ${claimable}개 있어`,
     me.bag.count > 0 && `가방에 ${me.bag.count}개 모였어. 수거장에서 정산하자!`,
     dim && '동네가 더러워졌어… 같이 치우자!',
+    (reg?.attacked_today.count ?? 0) > 0 && '다른 지역에서 쓰레기가 날아왔어! 분리배출로 되갚아 주자',
+    me.attack_tickets > 0 && `공격권이 ${me.attack_tickets}장 있어! 다른 지역에 쓰레기를 던져 볼래?`,
   ].filter(Boolean) as string[];
   const petLines = todo.length ? todo : [
     '반가워!', '오늘도 분리배출 화이팅!', '페트병은 라벨 떼고 찌그러뜨려 줘!', '깨끗이 헹궈서 버리면 캡슐이 더 좋아져!',
@@ -69,8 +71,8 @@ export default function Home() {
           <p className="small muted">
             재활용 {dumpDaysText(reg.dump_weekdays)} ·{' '}
             {me.today.dump_time_now
-              ? (!me.today.dumpday_ticket_taken && me.today.verify_reward_left > 0 && me.tickets < me.ticket_cap
-                ? <b style={{ color: 'var(--accent)' }}>지금 배출 시간이에요! 우리 동네 수거장에서 인증하면 도전권 +1</b>
+              ? (me.today.verify_reward_left > 0 && me.attack_tickets < me.attack_ticket_cap
+                ? <b style={{ color: 'var(--accent)' }}>지금 배출 시간이에요! 우리 동네 수거장에서 인증하면 공격권 +1</b>
                 : <b style={{ color: 'var(--accent)' }}>지금 배출 시간이에요</b>)
               : nextDump
                 ? `다음 배출 시간: ${['일', '월', '화', '수', '목', '금', '토'][nextDump.getDay()]}요일 ${nextDump.getHours() >= 12 ? '오후' : '오전'} ${nextDump.getHours() % 12 || 12}시부터`
@@ -78,6 +80,20 @@ export default function Home() {
           </p>
         ) : (
           <p className="small muted">첫 배출 인증을 하면 그 위치의 동네로 정해져요.</p>
+        )}
+        {reg && me.today.dump_items && (
+          <p className="dump-now">
+            {me.today.dump_time_now ? '지금 내놓는 것' : '다음에 내놓는 것'}: <b>{me.today.dump_items.join(' · ')}</b>
+            {' '}<Link to="/me" className="tiny">요일표</Link>
+          </p>
+        )}
+        {reg && reg.attacked_today.count > 0 && (
+          <p className="alert-in"><Icon name="trash_bag" size={26} />오늘 다른 지역에서 쓰레기가 {reg.attacked_today.count}번 날아왔어요 (−{reg.attacked_today.amount})</p>
+        )}
+        {reg?.unit && (
+          <Link to="/regions" className="btn ghost block">
+            <Icon name="attack" size={24} />지역 공방전 · 공격권 {me.attack_tickets}/{me.attack_ticket_cap}
+          </Link>
         )}
       </div>
 

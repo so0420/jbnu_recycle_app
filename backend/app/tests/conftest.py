@@ -41,9 +41,18 @@ def _build_test_database_url() -> str:
 TEST_DATABASE_URL = _build_test_database_url()
 
 
+def pytest_collection_modifyitems(items):
+    """세션 단위 엔진과 같은 이벤트 루프에서 모든 테스트를 실행한다 (루프가 바뀌면 연결이 끊긴다)."""
+    marker = pytest.mark.asyncio(loop_scope="session")
+    for item in items:
+        if pytest_asyncio.is_async_test(item):
+            item.add_marker(marker, append=False)
+
+
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
-    engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+    engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True,
+                                 connect_args={"init_command": "SET time_zone='+09:00'"})   # 운영과 같은 KST
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine

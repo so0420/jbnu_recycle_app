@@ -18,6 +18,16 @@ function bottle(x: number, y: number, k: number, fill: string, cap: string): str
     `<rect x="${n(x - 4 * k)}" y="${n(y - 20 * k)}" width="${n(8 * k)}" height="${n(5 * k)}" rx="1" ${s(cap, 3)}/>`;
 }
 
+/** 묶은 쓰레기 봉투 (중심 x,y) */
+function trashBag(x: number, y: number, k: number, fill: string): string {
+  const P = (dx: number, dy: number): string => `${n(x + dx * k)} ${n(y + dy * k)}`;
+  return `<path d="M${P(-13, -8)} Q${P(-20, 6)} ${P(-15, 18)} Q${P(0, 25)} ${P(15, 18)} Q${P(20, 6)} ${P(13, -8)} Z" ${s(fill)}/>` +
+    shade(`M${P(8, -6)} Q${P(18, 6)} ${P(13, 18)} Q${P(9, 21)} ${P(4, 22)} Q${P(12, 8)} ${P(8, -6)} Z`) +
+    `<path d="M${P(-9, -8)} L${P(-6, -19)} L${P(0, -12)} L${P(6, -19)} L${P(9, -8)} Z" ${s(fill, 2.6)}/>` +
+    `<path d="M${P(-10, 0)} Q${P(-9, -4)} ${P(-5, -5)}" ${s('lightline', 3.2)}/>` +
+    `<path d="M${P(-4, 10)} L${P(2, 6)} M${P(5, 15)} L${P(9, 11)}" ${s('line', 2)}/>`;
+}
+
 /** 타입 문장 안의 흰 상징 (중심 32,32) */
 const SYMBOL: Record<RemonType, () => string> = {
   plastic: () => bottle(32, 34, 0.95, '#FFFFFF', '#FFFFFF'),
@@ -89,6 +99,29 @@ const ICONS: Record<string, () => string> = {
     `<path d="${spiky(32, 32, 14, 7, 6)}" ${s('#FFD447', 2.6)}/>` +
     rot(42, 32, 32, bottle(32, 33, 1.45, '#CFE8F4', '#2C6BCB') + `<rect x="21" y="34" width="22" height="8" ${s('#E5553C', 2.6)}/>`) +
     rot(-42, 32, 32, `<rect x="25" y="8" width="14" height="48" rx="4" ${s('#C8CDD5')}/><ellipse cx="32" cy="9" rx="7" ry="2.4" ${s('#7B8391', 2.4)}/><rect x="25" y="34" width="14" height="10" ${s('#D8402F', 2.6)}/>`),
+  // ── 지역 공방전: 공격권과 던지는 쓰레기 ──
+  attack: () =>
+    `<path d="M5 28 L15 28 M3 37 L14 37 M7 46 L16 46" ${s('line', 3.4)}/>` +
+    rot(-18, 38, 36, trashBag(38, 38, 0.9, '#5E6E64')) + star(s, 54, 12, 5),
+  trash_bag: () => trashBag(32, 34, 1, '#4E5F55'),
+  trash_bottle: () =>
+    rot(-24, 32, 32, bottle(32, 34, 1.3, '#CFE8F4', '#2C6BCB') + `<rect x="22" y="32" width="20" height="9" ${s('#E5553C', 2.6)}/>` +
+      `<path d="M24 46 L30 50 M36 22 L40 26" ${s('line', 2)}/>` + `<path d="M26 24 L26 30" ${s('lightline', 3)}/>`),
+  trash_can: () =>
+    rot(16, 32, 32,
+      `<path d="M22 14 L42 14 L44 26 L38 32 L44 40 L42 52 L22 52 L20 40 L26 32 L20 26 Z" ${s('#C8CDD5')}/>` +
+      `<ellipse cx="32" cy="14" rx="10" ry="3" ${s('#7B8391', 2.4)}/>` +
+      `<path d="M21 40 L43 40 L42 46 L22 46 Z" ${s('#D8402F', 2.4)}/>` +
+      `<path d="M26 32 L38 32" ${s('line', 2.2)}/>` + `<path d="M26 20 L25 26" ${s('lightline', 3)}/>`),
+  trash_box: () =>
+    rot(-10, 32, 34,
+      `<path d="M12 24 L52 24 L50 54 L14 54 Z" ${s('#D9B07A')}/>` + shade('M42 24 L52 24 L50 54 L40 54 Z') +
+      `<path d="M12 24 L4 14 L26 14 L32 24 M52 24 L60 14 L38 14 L32 24" ${s('#C99A62', 2.6)}/>` +
+      `<rect x="28" y="24" width="8" height="12" ${s('#F2E2C0', 2.2)}/>` + `<path d="M18 46 L28 44" ${s('line', 2)}/>`),
+  trash_peel: () =>
+    `<path d="M32 30 C22 34 14 44 12 54 C20 48 26 42 32 38 C38 42 44 48 52 54 C50 44 42 34 32 30 Z" ${s('#F2D24B')}/>` +
+    `<path d="M32 38 C30 46 30 52 32 58 C34 52 34 46 32 38 Z" ${s('#E8B620', 2.4)}/>` +
+    `<path d="M28 30 Q30 18 34 10 L38 12 Q36 22 36 30 Z" ${s('#E8C33A', 2.6)}/>` + `<rect x="33" y="6" width="6" height="6" rx="2" ${s('#6B5A2E', 2.2)}/>`,
   map_pin: () =>
     `<path d="M32 58 C22 44 12 36 12 25 A20 20 0 0 1 52 25 C52 36 42 44 32 58 Z" ${s('#3FA66B')}/>` +
     shade('M42 8 A20 20 0 0 1 52 25 C52 36 42 44 32 58 C38 44 46 34 42 8 Z') +

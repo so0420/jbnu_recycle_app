@@ -32,8 +32,13 @@ def guides() -> dict:
     return _load("guides.yaml")
 
 
+@lru_cache
+def dump_rules() -> dict:
+    return _load("dump_rules.yaml")
+
+
 def reload_all() -> None:
-    for fn in (species, bosses, economy, guides):
+    for fn in (species, bosses, economy, guides, dump_rules):
         fn.cache_clear()
 
 

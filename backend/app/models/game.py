@@ -134,8 +134,9 @@ class RegionEvent(Base):
     __tablename__ = "region_events"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     unit: Mapped[str] = mapped_column(String(12), index=True)
-    type: Mapped[str] = mapped_column(String(20))       # restore | raid_kill | decay | raid_hit
+    type: Mapped[str] = mapped_column(String(20))       # restore | raid_kill | decay | raid_hit | attack
     amount: Mapped[float] = mapped_column(Float)
+    src_unit: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)   # attack: 공격한 쪽 지역
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     nickname: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)

@@ -57,6 +57,11 @@ export function dumpDaysText(s: string | undefined | null): string {
     .join('·') + ' 수거';
 }
 
+/** 수거 요일 d 의 배출 시간대: "토 18시~일 6시" */
+export function dumpWindowText(d: number): string {
+  return `${WEEKDAYS[(d + 6) % 7]} 18시~${WEEKDAYS[d]} 6시`;
+}
+
 export function fmt(n: number): string {
   return n.toLocaleString('ko-KR');
 }

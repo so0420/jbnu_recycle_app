@@ -255,6 +255,61 @@ button { font: inherit; color: inherit; }
 .rank-row.mine { border: 2px solid var(--accent); }
 .rank-row .rk { font-family: var(--display); font-size: 20px; text-align: center; }
 
+/* ── 요일별 배출 품목 ── */
+.dump-sched { display: flex; flex-direction: column; gap: 6px; }
+.dump-day { display: grid; grid-template-columns: 136px 1fr; word-break: keep-all; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--bg); }
+.dump-now { background: var(--accent-soft); border-radius: 12px; padding: 8px 12px; font-size: 14px; }
+.dump-when { background: #e6eef9; border-radius: 12px; padding: 8px 12px; font-size: 14px; }
+
+/* ── 지역 공방전 ── */
+.atk-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--rule); }
+.atk-row .rk { font-family: var(--display); font-size: 20px; text-align: center; }
+.atk-row .btn { min-width: 76px; flex-direction: column; gap: 0; line-height: 1.15; }
+.atk-row .btn small { font-weight: 600; font-size: 11px; opacity: 0.9; }
+.mods { display: flex; gap: 4px; flex-wrap: wrap; }
+.mods .chip { font-size: 11px; padding: 0 7px; }
+.ticket-row { display: flex; align-items: center; gap: 4px; }
+.ticket-row .art.off { filter: grayscale(1) opacity(0.3); }
+.alert-in { background: #fde6e1; border-radius: 12px; padding: 8px 12px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+
+.throw-stage { position: relative; height: 430px; border-radius: 20px; overflow: hidden; border: 2px solid var(--line); box-shadow: 0 3px 0 var(--line);
+  background: linear-gradient(#cfe3f2 0 58%, #d6e7c6 58% 100%); cursor: pointer; user-select: none; -webkit-user-select: none; }
+.throw-target { position: absolute; top: 14px; left: 50%; width: 80%; transform: translateX(-50%); background: var(--surface);
+  border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 3px 0 var(--line); }
+.throw-target.shake-a { animation: tgt-shake-a 0.28s; }
+.throw-target.shake-b { animation: tgt-shake-b 0.28s; }
+@keyframes tgt-shake-a { 0%, 100% { transform: translateX(-50%); } 30% { transform: translateX(calc(-50% - 7px)) rotate(-2deg); } 65% { transform: translateX(calc(-50% + 5px)) rotate(1.5deg); } }
+@keyframes tgt-shake-b { 0%, 100% { transform: translateX(-50%); } 30% { transform: translateX(calc(-50% + 7px)) rotate(2deg); } 65% { transform: translateX(calc(-50% - 5px)) rotate(-1.5deg); } }
+.stain { position: absolute; width: 22px; height: 15px; border-radius: 55% 45% 60% 40%; background: #7d6236; opacity: 0.5; pointer-events: none; animation: stain-in 0.2s ease-out; }
+.stain.s0 { left: 10%; top: 62%; } .stain.s1 { left: 72%; top: 14%; width: 16px; } .stain.s2 { left: 44%; top: 70%; height: 11px; }
+.stain.s3 { left: 86%; top: 60%; width: 14px; } .stain.s4 { left: 26%; top: 10%; } .stain.s5 { left: 60%; top: 56%; width: 26px; }
+.stain.s6 { left: 4%; top: 22%; width: 13px; } .stain.s7 { left: 36%; top: 40%; width: 12px; height: 9px; } .stain.s8 { left: 80%; top: 36%; height: 12px; }
+@keyframes stain-in { from { transform: scale(0.2); opacity: 0; } to { transform: none; opacity: 0.5; } }
+.splat { position: absolute; top: 55%; width: 0; height: 0; pointer-events: none; }
+.splat .puff { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle, #f5e9c9 0 30%, #c9a467 31% 45%, transparent 46%), radial-gradient(circle at 20% 30%, #b08a4e 0 9%, transparent 10%),
+    radial-gradient(circle at 80% 25%, #b08a4e 0 8%, transparent 9%), radial-gradient(circle at 70% 80%, #b08a4e 0 10%, transparent 11%);
+  animation: puff 0.55s ease-out forwards; }
+.splat .hit-num { position: absolute; left: 0; top: -30px; transform: translateX(-50%); font-family: var(--display); font-size: 20px; color: var(--bad);
+  -webkit-text-stroke: 1px #fff; white-space: nowrap; animation: float-up 0.7s ease-out forwards; }
+@keyframes puff { from { transform: scale(0.3); opacity: 1; } 60% { opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+.proj { position: absolute; left: 50%; bottom: 118px; width: 42px; height: 42px; margin-left: -21px; opacity: 0; pointer-events: none;
+  animation: proj-x 760ms linear forwards; }
+.proj-y, .proj-spin { display: block; width: 42px; height: 42px; }
+.proj-y { animation: proj-y 760ms forwards; }
+.proj-spin { animation: proj-spin 760ms linear forwards; }
+@keyframes proj-x { 0% { opacity: 1; transform: translateX(0); } 95% { opacity: 1; } 100% { opacity: 0; transform: translateX(var(--dx)); } }
+@keyframes proj-y { 0% { transform: translateY(0) scale(1.1); animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1); }
+  60% { transform: translateY(-272px) scale(0.85); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  100% { transform: translateY(-236px) scale(0.72); } }
+@keyframes proj-spin { to { transform: rotate(var(--rot)); } }
+.thrower { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.thrower .art { transform-origin: 50% 100%; }
+.thrower.throwing .art { animation: windup 450ms ease-out, throw-arm 140ms ease-in-out 450ms infinite; }
+@keyframes windup { 0% { transform: none; } 100% { transform: rotate(-12deg) translateY(4px) scale(0.96, 1.04); } }
+@keyframes throw-arm { 0%, 100% { transform: rotate(-10deg) translateY(2px); } 45% { transform: rotate(12deg) translateY(-8px) scale(1.05); } }
+.throw-skip { position: absolute; right: 12px; bottom: 10px; color: var(--muted); }
+
 /* ── 문서 ── */
 .doc { max-width: 720px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 14px; }
 .doc h2 { margin-top: 10px; }

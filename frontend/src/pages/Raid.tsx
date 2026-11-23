@@ -89,7 +89,7 @@ export default function Raid() {
 
   return (
     <>
-      <PageHead title="동네 레이드" back={false} right={<Link className="btn ghost sm" to="/regions">청결도</Link>} />
+      <PageHead title="동네 레이드" back={false} right={<Link className="btn ghost sm" to="/regions">공방전</Link>} />
       <div className="card pop">
         <div className="center"><Boss boss={r.boss.key} size={200} hurt={r.killed} /></div>
         <div className="row between wrap">

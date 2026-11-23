@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Garden } from '../components/Art';
-import { Modal, PageHead } from '../components/common';
+import { DumpSchedule, Modal, PageHead } from '../components/common';
 import { send } from '../lib/api';
 import RegionPicker from '../components/RegionPicker';
 import { dumpDaysText } from '../lib/labels';
@@ -59,6 +59,7 @@ export default function MePage() {
       <div className="card">
         <h3>내 동네</h3>
         {me.region && <p className="small muted">{me.region.gu} {me.region.name} · {dumpDaysText(me.region.dump_weekdays)} · {me.region.confirmed ? '확정됨' : '첫 인증 때 확정'}</p>}
+        {me.region?.dump_schedule && <DumpSchedule s={me.region.dump_schedule} />}
         <div className="field">
           <label htmlFor="me-sido">{me.region?.confirmed && me.region.next_change_free ? '동네 바꾸기 (확정 뒤 첫 변경은 바로 할 수 있어요. 그다음부터는 30일에 한 번, 남은 도전권은 사라져요)' : '동네 바꾸기 (확정 뒤에는 30일에 한 번, 남은 도전권은 사라져요)'}</label>
           <RegionPicker idPrefix="me" value={region} onChange={setRegion} />
@@ -69,7 +70,7 @@ export default function MePage() {
       <div className="card">
         <h3>바로가기</h3>
         <div className="grid2">
-          <Link className="btn ghost sm" to="/regions">동네 청결도</Link>
+          <Link className="btn ghost sm" to="/regions">지역 공방전</Link>
           <Link className="btn ghost sm" to="/missions">미션</Link>
           <Link className="btn ghost sm" to="/dex">도감</Link>
           <Link className="btn ghost sm" to="/bag">분리 가방</Link>

@@ -8,7 +8,7 @@ from app.core import auth
 from app.core.config import settings
 from app.core.security import limiter
 from app.database import get_db
-from app.models import ClassifyLog, User
+from app.models import ClassifyLog, Region, User
 from app.services import images, locks
 from app.services.ai import classifier
 from app.services.game import actions, data, economy
@@ -30,6 +30,12 @@ def guide_view(category: str | None, item_label: str | None) -> dict | None:
     return {"category": category, "category_name": cat["name"], "type": cat["type"],
             "recyclable": cat["type"] != "none",
             "item": item, "habit_name": g["habits"].get(cat["type"], {}).get("name")}
+
+
+async def dump_when(db: AsyncSession, user: User, category: str | None) -> list[int] | None:
+    """우리 동네에서 이 물건을 내놓는 수거 요일 (요일별 품목 규칙이 있는 지역만)."""
+    home = await db.get(Region, user.region_code) if user.region_code else None
+    return actions.dump_when(home, category)
 
 
 async def reserve_ai(db: AsyncSession, user: User) -> None:
@@ -91,7 +97,7 @@ async def scan(request: Request, photo: UploadFile = File(...), user: User = Dep
         raise
     return {"log_id": log.id, "result": res.as_dict(), "guide": guide_view(res.category, res.item_label),
             "candidates": [guide_view(c, None) for c in res.candidates] if res.needs_user_choice else [],
-            "reward": reward}
+            "reward": reward, "dump_when": await dump_when(db, user, res.category)}
 
 
 class ChooseIn(BaseModel):
@@ -111,4 +117,4 @@ async def choose(log_id: int, body: ChooseIn, user: User = Depends(auth.current_
         log.category = body.category
         log.judged_by = "user"
     await db.commit()
-    return {"guide": guide_view(body.category, None)}
+    return {"guide": guide_view(body.category, None), "dump_when": await dump_when(db, user, body.category)}

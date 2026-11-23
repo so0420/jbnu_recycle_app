@@ -1,0 +1,14 @@
+# 지역별 '요일마다 내놓는 재활용 품목'. 조사 내용과 출처: data/dump_schedule.md
+# regions.dump_weekdays(수거 요일) 를 작은 요일부터 차례로 rounds 에 맞춘다.
+#   예) 일·화 지역 → 일요일 = rounds[0], 화요일 = rounds[1] / 월·수 지역 → 월요일 = rounds[0], 수요일 = rounds[1]
+# categories: guides.yaml 의 분류 키. 스캔한 물건을 무슨 요일에 내놓는지 알려 줄 때 쓴다.
+rules:
+  jeonju:
+    name: 전주시
+    sigungu: ["52111", "52113"]          # 완산구, 덕진구
+    rounds:
+      - items: [플라스틱, 병류, 금속류, 스티로폼]
+        categories: [plastic, glass, can, styrofoam]
+      - items: [투명페트병, 비닐류, 종이류, 스티로폼]
+        categories: [pet_clear, vinyl, paper, styrofoam]
+    note: "단독주택·상가 기준이에요. 아파트는 단지 안내를 따라 주세요. 투명 봉투에 품목별로 담아 내놓아요"

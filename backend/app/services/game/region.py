@@ -69,12 +69,17 @@ def invalidate_units() -> None:
     _UNITS_CACHE = None
 
 
-async def weight(db: AsyncSession, unit: str) -> float:
+async def raw_weight(db: AsyncSession, unit: str) -> float:
+    """인구 보정: (단위 평균 인구) / (이 단위 인구). 인구를 모르면 1."""
     us = await units(db)
     pops = [u["population"] for u in us.values() if u["population"]]
     if not pops or not us.get(unit, {}).get("population"):
         return 1.0
-    w = (sum(pops) / len(pops)) / us[unit]["population"]
+    return (sum(pops) / len(pops)) / us[unit]["population"]
+
+
+async def weight(db: AsyncSession, unit: str) -> float:
+    w = await raw_weight(db, unit)
     c = cfg()
     if settings.REGION_MODE == "sigungu":       # 전국 시군구는 인구 차이가 80배 넘게 나서 범위를 넓힌다
         return max(c["w_min_sigungu"], min(c["w_max_sigungu"], w))
@@ -114,14 +119,15 @@ def clamp(v: float) -> float:
     return max(cfg()["min"], min(cfg()["max"], v))
 
 
-async def change(db: AsyncSession, unit: str, amount: float, type_: str, user: User | None = None) -> RegionState:
+async def change(db: AsyncSession, unit: str, amount: float, type_: str, user: User | None = None,
+                 src_unit: str | None = None) -> RegionState:
     st = await state(db, unit)
     c = cfg()
     await db.execute(update(RegionState).where(RegionState.week_start == st.week_start, RegionState.unit == unit)
                      .values(cleanliness=func.least(c["max"], func.greatest(c["min"], RegionState.cleanliness + amount))))
     st = await db.get(RegionState, (st.week_start, unit), populate_existing=True)
     db.add(RegionEvent(unit=unit, type=type_, amount=round(amount, 1), user_id=user.id if user else None,
-                       nickname=user.nickname if user else None))
+                       nickname=user.nickname if user else None, src_unit=src_unit))
     return st
 
 
@@ -154,8 +160,8 @@ def stage_of(c: float) -> dict:
     return {"key": "crisis", "name": "위기"}
 
 
-async def standings(db: AsyncSession, mine: str | None = None, top: int = 30) -> dict:
-    """참여한 단위만 순위에 올린다. 내 단위는 순위 밖이어도 따로 돌려준다."""
+async def ranked(db: AsyncSession) -> tuple[list[dict], dict[str, RegionState]]:
+    """이번 주에 참여한(인증이 있는) 단위 전체를 순위대로. (순위 목록, 단위 → 이번 주 상태)"""
     us = await units(db)
     states = {s.unit: s for s in (await db.execute(
         select(RegionState).where(RegionState.week_start == week_start()))).scalars()}
@@ -169,6 +175,13 @@ async def standings(db: AsyncSession, mine: str | None = None, top: int = 30) ->
     rows.sort(key=lambda r: (-r["cleanliness"], -r["verifs"]))
     for i, r in enumerate(rows):
         r["rank"] = i + 1
+    return rows, states
+
+
+async def standings(db: AsyncSession, mine: str | None = None, top: int = 30) -> dict:
+    """참여한 단위만 순위에 올린다. 내 단위는 순위 밖이어도 따로 돌려준다."""
+    us = await units(db)
+    rows, states = await ranked(db)
     me = next((r for r in rows if r["unit"] == mine), None)
     if mine and me is None and mine in us:
         st = states.get(mine)
@@ -179,8 +192,22 @@ async def standings(db: AsyncSession, mine: str | None = None, top: int = 30) ->
 
 
 async def feed(db: AsyncSession, unit: str, limit: int = 20) -> list[dict]:
-    q = (select(RegionEvent).where(RegionEvent.unit == unit, RegionEvent.type != "decay")
+    """우리 동네 소식: 회복·레이드 처치, 우리가 받은 공격, 우리 주민이 한 공격."""
+    q = (select(RegionEvent).where(
+        ((RegionEvent.unit == unit) & (RegionEvent.type != "decay"))
+        | ((RegionEvent.src_unit == unit) & (RegionEvent.type == "attack")))
          .order_by(RegionEvent.id.desc()).limit(limit))
+    us = await units(db)
+    out = []
     # 같은 동네 회원에게만 보이고, 시각은 날짜까지만 알려 준다
-    return [{"type": e.type, "amount": e.amount, "nickname": e.nickname, "at": e.created_at.date().isoformat()}
-            for e in (await db.execute(q)).scalars()]
+    for e in (await db.execute(q)).scalars():
+        row = {"type": e.type, "amount": e.amount, "nickname": e.nickname, "at": e.created_at.date().isoformat()}
+        if e.type == "attack":
+            incoming = e.unit == unit
+            other = e.src_unit if incoming else e.unit
+            row["dir"] = "in" if incoming else "out"
+            row["other"] = us.get(other or "", {}).get("name", "다른 지역")
+            if incoming:
+                row["nickname"] = None      # 다른 지역 주민의 닉네임은 보여 주지 않는다 (지역만)
+        out.append(row)
+    return out

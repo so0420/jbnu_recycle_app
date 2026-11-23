@@ -17,7 +17,8 @@ export default function Layout() {
         </button>
         <div className="res">
           <span title="에코 코인"><Icon name="coin" size={20} />{fmt(me?.coins ?? 0)}</span>
-          <span title="도전권"><Icon name="ticket" size={20} />{me?.tickets ?? 0}</span>
+          <span title="도전권 (레이드)"><Icon name="ticket" size={20} />{me?.tickets ?? 0}</span>
+          <span title="공격권 (지역 공방전)"><Icon name="attack" size={20} />{me?.attack_tickets ?? 0}</span>
           <span title="정화의 결정"><Icon name="crystal" size={20} />{me?.crystals ?? 0}</span>
         </div>
       </header>

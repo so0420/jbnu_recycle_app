@@ -13,6 +13,8 @@ export interface Me {
   coins: number;
   tickets: number;
   ticket_cap: number;
+  attack_tickets: number;
+  attack_ticket_cap: number;
   crystals: number;
   materials: Record<MatKey, number>;
   bag: { count: number; capacity: number };
@@ -30,6 +32,8 @@ export interface Me {
     center: [number, number];
     next_change_free: boolean;
     dump_weekdays: string;
+    attacked_today: { count: number; amount: number };
+    dump_schedule: null | { days: { weekday: number; items: string[] }[]; note: string | null };
   };
   today: {
     verify_count: number;
@@ -39,6 +43,7 @@ export interface Me {
     dumpday_ticket_taken: boolean;
     dump_time_now: boolean;
     next_dump_at: string | null;
+    dump_items: string[] | null;
   };
   unlocks: Record<string, boolean>;
   unlock_levels: Record<string, number>;

@@ -22,9 +22,21 @@ verify:
   special_materials: 6          # 폐건전지·의류 수거함
   bag_expire_days: 7
 
-tickets:
+tickets:                         # 도전권: 레이드에 쓴다
   cap: 10
   free_raid_daily: 1
+
+attack:                          # 공격권: 다른 지역을 공격(지역 공방전)할 때 쓴다
+  per_verify: 1                 # 배출 시간에 우리 동네 수거장에서 인증하면 1회마다 (하루 보상 3번 안에서)
+  cap: 5                        # 보유 상한
+  mult: 1.5                     # 공격 1회 피해 = 인증 1회 회복 기준량 × 1.5 × 공격한 사람 지역의 인구 보정
+  w_min: 0.5                    # 인구 보정 범위 (인구가 적은 지역일수록 1명의 공격이 세다)
+  w_max: 3.0
+  underdog: 1.2                 # 우리보다 순위가 높은 지역을 공격하면
+  fatigue_after: 80             # 한 지역이 오늘 받은 피해가 이만큼을 넘으면
+  fatigue_mult: 0.5             # 그다음 피해는 절반
+  crisis_damage: 0.5            # 위기 지역(청결도 crisis_below 미만)이 받는 피해
+  daily_per_target: 2           # 한 사람이 같은 지역을 하루에 공격할 수 있는 횟수
 
 capsule:
   rare_rate: 0.25

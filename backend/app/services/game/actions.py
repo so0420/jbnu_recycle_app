@@ -77,6 +77,54 @@ def next_dump_window(r: Region | None, t: datetime) -> datetime | None:
     return None
 
 
+def _dump_rule(r: Region | None) -> tuple[dict, list[int]] | None:
+    """이 지역에 맞는 요일별 품목 규칙과 수거 요일(정렬). 규칙이 없거나 요일 수가 안 맞으면 None."""
+    if r is None or not r.dump_weekdays:
+        return None
+    days = sorted({int(x) for x in r.dump_weekdays.split(",") if x.strip()})
+    for rule in data.dump_rules()["rules"].values():
+        if r.sigungu_code in rule["sigungu"] and len(days) == len(rule["rounds"]):
+            return rule, days
+    return None
+
+
+def dump_schedule(r: Region | None) -> dict | None:
+    """요일별 배출 품목: {"days": [{"weekday": 0, "items": [...]}, ...], "note": ...}. 0=일 … 6=토 (수거일)."""
+    found = _dump_rule(r)
+    if not found:
+        return None
+    rule, days = found
+    return {"days": [{"weekday": d, "items": rd["items"]} for d, rd in zip(days, rule["rounds"])],
+            "note": rule.get("note")}
+
+
+def dump_items_for(r: Region | None, t: datetime) -> list[str] | None:
+    """t 가 속한(또는 t 뒤 가장 가까운) 배출 시간대에 내놓는 품목.
+
+    배출 시간대는 수거 전날 18시 ~ 수거일 6시라서, 시간대 안의 시각에 6시간을 더하면 수거일이 된다.
+    """
+    found = _dump_rule(r)
+    if not found:
+        return None
+    rule, days = found
+    at = t if is_dump_time(r, t) else next_dump_window(r, t)
+    if at is None:
+        return None
+    collect = (at + timedelta(hours=6)).weekday()
+    sun0 = (collect + 1) % 7
+    return next((rd["items"] for d, rd in zip(days, rule["rounds"]) if d == sun0), None)
+
+
+def dump_when(r: Region | None, category: str | None) -> list[int] | None:
+    """이 분류를 내놓는 수거 요일 목록 (0=일). 규칙이 없거나 해당 품목이 아니면 None."""
+    found = _dump_rule(r)
+    if not found or not category:
+        return None
+    rule, days = found
+    out = [d for d, rd in zip(days, rule["rounds"]) if category in rd.get("categories", [])]
+    return out or None
+
+
 # ───────── 스캔 ─────────
 async def on_scan(db: AsyncSession, user: User, res: ClassifyResult, log: ClassifyLog) -> dict:
     eco = data.economy()
@@ -241,6 +289,14 @@ async def settle(db: AsyncSession, user: User, place: Place, v: Verification) ->
         out["xp_breakdown"].append({"type": "dumpday", "amount": r["xp"]})
     if tickets:
         out["tickets"] = await economy.add_resource(db, user, "tickets", tickets, "verify", str(v.id))
+
+    # 공격권 (지역 공방전): 배출 시간에 우리 동네 수거장에서 제대로 배출했을 때만
+    if rewarded and in_home and dump_time:
+        got = await economy.add_resource(db, user, "attack_tickets", eco["attack"]["per_verify"], "verify", str(v.id))
+        if got:
+            out["attack_tickets"] = got
+        else:
+            out["attack_tickets_full"] = True
 
     # 지역 청결도 (내 동네일 때, 하루 보상 상한 안에서만)
     if rewarded and in_home and home:

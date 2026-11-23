@@ -34,6 +34,7 @@ async def profile(db: AsyncSession, user: User) -> dict:
         "level": user.level, "xp": user.xp, "xp_in_level": cur, "xp_need": need,
         "garden_stage": economy.garden_stage(user.level),
         "coins": user.coins, "tickets": user.tickets, "ticket_cap": data.economy()["tickets"]["cap"],
+        "attack_tickets": user.attack_tickets or 0, "attack_ticket_cap": data.economy()["attack"]["cap"],
         "crystals": user.crystals, "materials": await economy.materials(db, user),
         "bag": {"count": await actions.bag_count(db, user), "capacity": economy.bag_capacity(user)},
         "starter_done": user.starter_done,
@@ -44,16 +45,32 @@ async def profile(db: AsyncSession, user: User) -> dict:
                     "stage": region.stage_of(clean) if unit else None,
                     "center": [home.center_lat, home.center_lng],
                     "next_change_free": user.region_changed_at is None,
-                    "dump_weekdays": home.dump_weekdays} if home else None),
+                    "dump_weekdays": home.dump_weekdays,
+                    "dump_schedule": actions.dump_schedule(home),
+                    "attacked_today": await _attacked_today(db, unit)} if home else None),
         "today": {"verify_count": d.verify_count, "verify_reward_left": max(0, 3 - d.verify_count),
                   "scan_xp_left": max(0, data.economy()["account_xp"]["scan_daily_cap"] - d.guide_xp_count),
                   "free_raid": not d.free_raid_used, "dumpday_ticket_taken": d.dumpday_ticket,
                   "dump_time_now": actions.is_dump_time(home, t),
-                  "next_dump_at": nxt.isoformat() if nxt else None},
+                  "next_dump_at": nxt.isoformat() if nxt else None,
+                  "dump_items": actions.dump_items_for(home, t)},
         "unlocks": {k: economy.unlocked(user, k) for k in data.economy()["garden"]},
         "unlock_levels": data.economy()["garden"],
         "economy_multiplier": settings.ECONOMY_MULTIPLIER,
     }
+
+
+async def _attacked_today(db: AsyncSession, unit: str | None) -> dict:
+    """오늘 우리 지역이 받은 공격 (횟수, 피해 합)."""
+    if not unit:
+        return {"count": 0, "amount": 0}
+    from datetime import datetime, time as dtime
+    from sqlalchemy import func
+    from app.services.clock import today
+    n, amt = (await db.execute(select(func.count(), func.coalesce(func.sum(-RegionEvent.amount), 0)).where(
+        RegionEvent.unit == unit, RegionEvent.type == "attack",
+        RegionEvent.created_at >= datetime.combine(today(), dtime.min)))).one()
+    return {"count": int(n), "amount": round(float(amt))}
 
 
 @router.get("")
@@ -80,6 +97,7 @@ async def change_region(body: RegionIn, user: User = Depends(auth.current_user),
         # 확정 뒤 첫 변경은 그대로 (가입 때 잘못 고른 경우), 그다음부터는 30일에 한 번 + 도전권 초기화
         if user.region_changed_at is not None:
             user.tickets = 0
+            user.attack_tickets = 0
         user.region_changed_at = now()
     user.region_code = r.code
     await db.commit()
